@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4
+    container_name: women_nav_postgis
+    restart: always
+    environment:
+      POSTGRES_DB: women_safe_navigation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: safe_password_123
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: women_nav_backend
+    restart: always
+    environment:
+      DB_HOST: postgis
+      DB_PORT: 5432
+      DB_NAME: women_safe_navigation
+      DB_USER: postgres
+      DB_PASSWORD: safe_password_123
+      SECRET_KEY: production_jwt_secret_key_nashik
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgis
+
+volumes:
+  postgis_data:

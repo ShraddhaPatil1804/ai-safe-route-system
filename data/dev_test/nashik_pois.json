@@ -1,0 +1,1106 @@
+[
+  {
+    "id": 900001,
+    "name": "Sarkarwada Police Station",
+    "category": "police",
+    "latitude": 20.0056,
+    "longitude": 73.7797,
+    "address": "Gangapur Road, Sarkarwada, Nashik"
+  },
+  {
+    "id": 900002,
+    "name": "Bhadrakali Police Station",
+    "category": "police",
+    "latitude": 19.9961,
+    "longitude": 73.7915,
+    "address": "Old Nashik, Bhadrakali, Nashik"
+  },
+  {
+    "id": 900003,
+    "name": "Panchavati Police Station",
+    "category": "police",
+    "latitude": 20.0152,
+    "longitude": 73.7994,
+    "address": "Dindori Road, Panchavati, Nashik"
+  },
+  {
+    "id": 900004,
+    "name": "Mumbai Naka Police Station",
+    "category": "police",
+    "latitude": 19.9862,
+    "longitude": 73.7818,
+    "address": "Mumbai Agra Highway, Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900005,
+    "name": "Gangapur Police Station",
+    "category": "police",
+    "latitude": 20.0245,
+    "longitude": 73.7531,
+    "address": "Gangapur Road, Anandwalli, Nashik"
+  },
+  {
+    "id": 900006,
+    "name": "Upnagar Police Station",
+    "category": "police",
+    "latitude": 19.961,
+    "longitude": 73.818,
+    "address": "Nashik Pune Road, Upnagar, Nashik"
+  },
+  {
+    "id": 900007,
+    "name": "Nashik Road Police Station",
+    "category": "police",
+    "latitude": 19.9485,
+    "longitude": 73.8392,
+    "address": "Jail Road, Nashik Road, Nashik"
+  },
+  {
+    "id": 900008,
+    "name": "Satpur Police Station",
+    "category": "police",
+    "latitude": 19.9982,
+    "longitude": 73.7314,
+    "address": "Trimbak Road, MIDC Satpur, Nashik"
+  },
+  {
+    "id": 900009,
+    "name": "Ambad Police Station",
+    "category": "police",
+    "latitude": 19.9451,
+    "longitude": 73.738,
+    "address": "MIDC Ambad, Nashik"
+  },
+  {
+    "id": 900010,
+    "name": "Indira Nagar Police Station",
+    "category": "police",
+    "latitude": 19.9678,
+    "longitude": 73.7745,
+    "address": "Indira Nagar, Nashik"
+  },
+  {
+    "id": 900011,
+    "name": "Deolali Camp Police Station",
+    "category": "police",
+    "latitude": 19.932,
+    "longitude": 73.835,
+    "address": "Cantonment Camp, Deolali, Nashik"
+  },
+  {
+    "id": 900012,
+    "name": "Mhasrul Police Station",
+    "category": "police",
+    "latitude": 20.045,
+    "longitude": 73.805,
+    "address": "Dindori Link Road, Mhasrul, Nashik"
+  },
+  {
+    "id": 900013,
+    "name": "Adgaon Police Station",
+    "category": "police",
+    "latitude": 20.038,
+    "longitude": 73.845,
+    "address": "Agra Highway, Adgaon, Nashik"
+  },
+  {
+    "id": 900014,
+    "name": "Commissioner of Police Office Nashik",
+    "category": "police",
+    "latitude": 19.995,
+    "longitude": 73.776,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900015,
+    "name": "Women Police Assistance Cell (Nirbhaya Cell)",
+    "category": "police",
+    "latitude": 19.9942,
+    "longitude": 73.7755,
+    "address": "Police Commissionarate, Nashik"
+  },
+  {
+    "id": 900016,
+    "name": "Traffic Police Branch HQ",
+    "category": "police",
+    "latitude": 20.001,
+    "longitude": 73.782,
+    "address": "Ashok Stambh, Nashik"
+  },
+  {
+    "id": 900017,
+    "name": "Trimbakeshwar Police Station",
+    "category": "police",
+    "latitude": 19.9312,
+    "longitude": 73.532,
+    "address": "Main Road, Trimbakeshwar, Nashik"
+  },
+  {
+    "id": 900018,
+    "name": "Ozar Police Station",
+    "category": "police",
+    "latitude": 20.098,
+    "longitude": 73.935,
+    "address": "Airport Road, Ozar, Nashik"
+  },
+  {
+    "id": 900019,
+    "name": "Sinnar Phata Police Chowki",
+    "category": "police",
+    "latitude": 19.942,
+    "longitude": 73.845,
+    "address": "Sinnar Phata, Nashik Road"
+  },
+  {
+    "id": 900020,
+    "name": "Chetna Nagar Police Chowki",
+    "category": "police",
+    "latitude": 19.965,
+    "longitude": 73.765,
+    "address": "Rane Nagar, CIDCO, Nashik"
+  },
+  {
+    "id": 900021,
+    "name": "Dwarka Police Chowki",
+    "category": "police",
+    "latitude": 19.994,
+    "longitude": 73.7968,
+    "address": "Dwarka Circle, Nashik"
+  },
+  {
+    "id": 900022,
+    "name": "CBS Police Chowki",
+    "category": "police",
+    "latitude": 19.998,
+    "longitude": 73.789,
+    "address": "Central Bus Stand, Nashik"
+  },
+  {
+    "id": 900023,
+    "name": "Trimurti Chowk Police Outpost",
+    "category": "police",
+    "latitude": 19.9685,
+    "longitude": 73.7512,
+    "address": "CIDCO, Nashik"
+  },
+  {
+    "id": 900101,
+    "name": "Nashik Civil Hospital (District General Hospital)",
+    "category": "hospital",
+    "latitude": 19.9945,
+    "longitude": 73.778,
+    "address": "Civil Hospital Road, Nashik"
+  },
+  {
+    "id": 900102,
+    "name": "Wockhardt Super Speciality Hospital",
+    "category": "hospital",
+    "latitude": 19.985,
+    "longitude": 73.7825,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900103,
+    "name": "Apollo Hospitals Panchavati",
+    "category": "hospital",
+    "latitude": 20.022,
+    "longitude": 73.808,
+    "address": "Swaminarayan Nagar, Panchavati, Nashik"
+  },
+  {
+    "id": 900104,
+    "name": "Sahyadri Super Speciality Hospital",
+    "category": "hospital",
+    "latitude": 19.9875,
+    "longitude": 73.795,
+    "address": "Wadala Naka, Nashik"
+  },
+  {
+    "id": 900105,
+    "name": "HCG Manavata Cancer Centre",
+    "category": "hospital",
+    "latitude": 19.9835,
+    "longitude": 73.778,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900106,
+    "name": "Six Sigma Hospital",
+    "category": "hospital",
+    "latitude": 20.002,
+    "longitude": 73.754,
+    "address": "Mahatma Nagar, Nashik"
+  },
+  {
+    "id": 900107,
+    "name": "Ashoka Medicover Hospital",
+    "category": "hospital",
+    "latitude": 19.964,
+    "longitude": 73.771,
+    "address": "Indira Nagar, Nashik"
+  },
+  {
+    "id": 900108,
+    "name": "Shree Saibaba Heart Institute",
+    "category": "hospital",
+    "latitude": 20.0015,
+    "longitude": 73.768,
+    "address": "Sharanpur Road, Nashik"
+  },
+  {
+    "id": 900109,
+    "name": "Sushrusha Nursing Home",
+    "category": "hospital",
+    "latitude": 20.0065,
+    "longitude": 73.762,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900110,
+    "name": "Lotus Multi-Speciality Hospital",
+    "category": "hospital",
+    "latitude": 20.018,
+    "longitude": 73.751,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900111,
+    "name": "NDMVP Dr. Vasantrao Pawar Medical College Hospital",
+    "category": "hospital",
+    "latitude": 20.035,
+    "longitude": 73.842,
+    "address": "Adgaon, Nashik"
+  },
+  {
+    "id": 900112,
+    "name": "Bytco Super Speciality Hospital",
+    "category": "hospital",
+    "latitude": 19.949,
+    "longitude": 73.837,
+    "address": "Nashik Road, Nashik"
+  },
+  {
+    "id": 900113,
+    "name": "Cantonment General Hospital",
+    "category": "hospital",
+    "latitude": 19.935,
+    "longitude": 73.831,
+    "address": "Deolali Camp, Nashik"
+  },
+  {
+    "id": 900114,
+    "name": "Magnum Heart Institute",
+    "category": "hospital",
+    "latitude": 19.991,
+    "longitude": 73.765,
+    "address": "Patil Nagar, Nashik"
+  },
+  {
+    "id": 900115,
+    "name": "City Care Clinic & Maternity Hospital",
+    "category": "hospital",
+    "latitude": 20.004,
+    "longitude": 73.766,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900116,
+    "name": "Shradha Clinic & Women Care",
+    "category": "hospital",
+    "latitude": 19.998,
+    "longitude": 73.775,
+    "address": "Canada Corner, Nashik"
+  },
+  {
+    "id": 900117,
+    "name": "Sanjeevani Daycare & Clinic",
+    "category": "hospital",
+    "latitude": 20.012,
+    "longitude": 73.798,
+    "address": "Panchavati, Nashik"
+  },
+  {
+    "id": 900118,
+    "name": "LifeLine Polyclinic & Clinic",
+    "category": "hospital",
+    "latitude": 19.996,
+    "longitude": 73.735,
+    "address": "Satpur MIDC, Nashik"
+  },
+  {
+    "id": 900119,
+    "name": "Prerana Women & Child Clinic",
+    "category": "hospital",
+    "latitude": 19.972,
+    "longitude": 73.758,
+    "address": "CIDCO, Nashik"
+  },
+  {
+    "id": 900120,
+    "name": "Savitribai Phule Hospital UPHC",
+    "category": "hospital",
+    "latitude": 19.9435,
+    "longitude": 73.842,
+    "address": "Sinnar Phata, Nashik Road"
+  },
+  {
+    "id": 900201,
+    "name": "Wellness Forever 24x7 Pharmacy",
+    "category": "pharmacy",
+    "latitude": 20.0066,
+    "longitude": 73.7848,
+    "address": "Ashok Stambh Circle, Nashik"
+  },
+  {
+    "id": 900202,
+    "name": "Apollo Pharmacy College Road",
+    "category": "pharmacy",
+    "latitude": 20.0055,
+    "longitude": 73.7645,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900203,
+    "name": "Apollo Pharmacy Gangapur Road",
+    "category": "pharmacy",
+    "latitude": 20.0165,
+    "longitude": 73.7515,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900204,
+    "name": "Apollo Pharmacy Nashik Road",
+    "category": "pharmacy",
+    "latitude": 19.9505,
+    "longitude": 73.8335,
+    "address": "Near Railway Station, Nashik Road"
+  },
+  {
+    "id": 900205,
+    "name": "Noble Chemist 24/7",
+    "category": "pharmacy",
+    "latitude": 19.994,
+    "longitude": 73.7785,
+    "address": "Civil Hospital Road, Nashik"
+  },
+  {
+    "id": 900206,
+    "name": "Sanjivani Chemist",
+    "category": "pharmacy",
+    "latitude": 20.0095,
+    "longitude": 73.794,
+    "address": "Panchavati Karanja, Nashik"
+  },
+  {
+    "id": 900207,
+    "name": "MedPlus Pharmacy Indira Nagar",
+    "category": "pharmacy",
+    "latitude": 19.9635,
+    "longitude": 73.7735,
+    "address": "Indira Nagar, Nashik"
+  },
+  {
+    "id": 900208,
+    "name": "Wellness Forever 24x7 Mahatma Nagar",
+    "category": "pharmacy",
+    "latitude": 20.0018,
+    "longitude": 73.7555,
+    "address": "Mahatma Nagar, Nashik"
+  },
+  {
+    "id": 900209,
+    "name": "Lifeline 24x7 Chemist Mumbai Naka",
+    "category": "pharmacy",
+    "latitude": 19.9855,
+    "longitude": 73.782,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900210,
+    "name": "Ananya Medical & General Stores",
+    "category": "pharmacy",
+    "latitude": 19.952,
+    "longitude": 73.8345,
+    "address": "Railway Station Road, Nashik Road"
+  },
+  {
+    "id": 900211,
+    "name": "Faisal Medical & General Stores",
+    "category": "pharmacy",
+    "latitude": 19.9955,
+    "longitude": 73.7895,
+    "address": "Old Nashik, Nashik"
+  },
+  {
+    "id": 900212,
+    "name": "Shree Ganesh Chemist & Druggist",
+    "category": "pharmacy",
+    "latitude": 19.972,
+    "longitude": 73.762,
+    "address": "Untwadi Road, Nashik"
+  },
+  {
+    "id": 900213,
+    "name": "City Medico & Chemist",
+    "category": "pharmacy",
+    "latitude": 19.999,
+    "longitude": 73.772,
+    "address": "Canada Corner, Nashik"
+  },
+  {
+    "id": 900301,
+    "name": "Barbeque Nation",
+    "category": "restaurant",
+    "latitude": 19.9725,
+    "longitude": 73.7635,
+    "address": "City Centre Mall, Untwadi, Nashik"
+  },
+  {
+    "id": 900302,
+    "name": "River Dine Restaurant",
+    "category": "restaurant",
+    "latitude": 20.005,
+    "longitude": 73.778,
+    "address": "Sharanpur Road, Nashik"
+  },
+  {
+    "id": 900303,
+    "name": "Sadhana Chulivarchi Misal",
+    "category": "restaurant",
+    "latitude": 20.038,
+    "longitude": 73.715,
+    "address": "Bardan Phata, Gangapur Road, Nashik"
+  },
+  {
+    "id": 900304,
+    "name": "Mainland China Restaurant",
+    "category": "restaurant",
+    "latitude": 19.973,
+    "longitude": 73.764,
+    "address": "Untwadi Road, Nashik"
+  },
+  {
+    "id": 900305,
+    "name": "The Gateway Restaurant",
+    "category": "restaurant",
+    "latitude": 19.948,
+    "longitude": 73.731,
+    "address": "Ambad MIDC, Nashik"
+  },
+  {
+    "id": 900306,
+    "name": "Panchratna Pure Veg Restaurant",
+    "category": "restaurant",
+    "latitude": 19.997,
+    "longitude": 73.788,
+    "address": "CBS Circle, Nashik"
+  },
+  {
+    "id": 900307,
+    "name": "Samarth Dining Hall",
+    "category": "restaurant",
+    "latitude": 20.007,
+    "longitude": 73.763,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900308,
+    "name": "Rasoi Thali Restaurant",
+    "category": "restaurant",
+    "latitude": 19.999,
+    "longitude": 73.773,
+    "address": "Canada Corner, Nashik"
+  },
+  {
+    "id": 900309,
+    "name": "Hotel Sandeep",
+    "category": "restaurant",
+    "latitude": 20.001,
+    "longitude": 73.781,
+    "address": "Ashok Stambh, Nashik"
+  },
+  {
+    "id": 900310,
+    "name": "Hotel Radhakrishna",
+    "category": "restaurant",
+    "latitude": 19.985,
+    "longitude": 73.78,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900311,
+    "name": "Kaka Ka Dhaba",
+    "category": "restaurant",
+    "latitude": 20.021,
+    "longitude": 73.744,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900312,
+    "name": "Shree Datta Snacks & Dining",
+    "category": "restaurant",
+    "latitude": 19.951,
+    "longitude": 73.832,
+    "address": "Nashik Road, Nashik"
+  },
+  {
+    "id": 900313,
+    "name": "Suruchi Pure Veg Restaurant",
+    "category": "restaurant",
+    "latitude": 20.011,
+    "longitude": 73.795,
+    "address": "Panchavati, Nashik"
+  },
+  {
+    "id": 900314,
+    "name": "McDonald's City Centre Mall",
+    "category": "restaurant",
+    "latitude": 19.9722,
+    "longitude": 73.7632,
+    "address": "CCM Mall, Untwadi, Nashik"
+  },
+  {
+    "id": 900315,
+    "name": "Domino's Pizza College Road",
+    "category": "restaurant",
+    "latitude": 20.0062,
+    "longitude": 73.764,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900316,
+    "name": "Pizza Hut Gangapur Road",
+    "category": "restaurant",
+    "latitude": 20.017,
+    "longitude": 73.75,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900401,
+    "name": "Cafe Coffee Day (CCD) College Road",
+    "category": "cafe",
+    "latitude": 20.006,
+    "longitude": 73.763,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900402,
+    "name": "Starbucks Coffee College Road",
+    "category": "cafe",
+    "latitude": 20.0055,
+    "longitude": 73.7645,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900403,
+    "name": "Tea Villa Cafe Gangapur Road",
+    "category": "cafe",
+    "latitude": 20.019,
+    "longitude": 73.748,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900404,
+    "name": "Cafe Bliss & Bakery",
+    "category": "cafe",
+    "latitude": 20.008,
+    "longitude": 73.761,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900405,
+    "name": "Coffee Nation Lounge",
+    "category": "cafe",
+    "latitude": 20.0045,
+    "longitude": 73.769,
+    "address": "Thatte Nagar, Nashik"
+  },
+  {
+    "id": 900406,
+    "name": "Roadies Rostr Cafe",
+    "category": "cafe",
+    "latitude": 20.0175,
+    "longitude": 73.7505,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900407,
+    "name": "Barista Coffee Canada Corner",
+    "category": "cafe",
+    "latitude": 19.9985,
+    "longitude": 73.774,
+    "address": "Canada Corner, Nashik"
+  },
+  {
+    "id": 900408,
+    "name": "McCafé City Centre Mall",
+    "category": "cafe",
+    "latitude": 19.9725,
+    "longitude": 73.763,
+    "address": "Untwadi, Nashik"
+  },
+  {
+    "id": 900409,
+    "name": "Chai Break Lounge Mahatma Nagar",
+    "category": "cafe",
+    "latitude": 20.001,
+    "longitude": 73.756,
+    "address": "Mahatma Nagar, Nashik"
+  },
+  {
+    "id": 900410,
+    "name": "Cafe Peter College Road",
+    "category": "cafe",
+    "latitude": 20.0075,
+    "longitude": 73.7625,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900411,
+    "name": "Mocha Cafe & Bar Gangapur Road",
+    "category": "cafe",
+    "latitude": 20.021,
+    "longitude": 73.746,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900412,
+    "name": "Two Sisters Kitchen & Cafe",
+    "category": "cafe",
+    "latitude": 20.023,
+    "longitude": 73.742,
+    "address": "Anandwalli, Gangapur Road, Nashik"
+  },
+  {
+    "id": 900501,
+    "name": "CBS Central Bus Stand",
+    "category": "bus_stop",
+    "latitude": 19.9975,
+    "longitude": 73.7898,
+    "address": "Trimbak Road, CBS, Nashik"
+  },
+  {
+    "id": 900502,
+    "name": "New CBS Bus Stand (Mela Stand)",
+    "category": "bus_stop",
+    "latitude": 20.001,
+    "longitude": 73.7845,
+    "address": "Old Agra Road, Nashik"
+  },
+  {
+    "id": 900503,
+    "name": "Shalimar Bus Station",
+    "category": "bus_stop",
+    "latitude": 19.994,
+    "longitude": 73.791,
+    "address": "Shalimar Chowk, Nashik"
+  },
+  {
+    "id": 900504,
+    "name": "Thakkar Bazaar Private Bus Terminal",
+    "category": "bus_stop",
+    "latitude": 20.0005,
+    "longitude": 73.781,
+    "address": "Thakkar Bazaar, Nashik"
+  },
+  {
+    "id": 900505,
+    "name": "Nimani Bus Stand Panchavati",
+    "category": "bus_stop",
+    "latitude": 20.014,
+    "longitude": 73.797,
+    "address": "Panchavati, Nashik"
+  },
+  {
+    "id": 900506,
+    "name": "Nashik Road Station Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.9525,
+    "longitude": 73.834,
+    "address": "Nashik Road Railway Station, Nashik"
+  },
+  {
+    "id": 900507,
+    "name": "Dwarka Circle City Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.9945,
+    "longitude": 73.7972,
+    "address": "Dwarka Circle, Nashik"
+  },
+  {
+    "id": 900508,
+    "name": "Mumbai Naka Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.986,
+    "longitude": 73.782,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900509,
+    "name": "BYK College Bus Stop",
+    "category": "bus_stop",
+    "latitude": 20.0058,
+    "longitude": 73.7648,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900510,
+    "name": "Jehan Circle Bus Stop",
+    "category": "bus_stop",
+    "latitude": 20.0162,
+    "longitude": 73.7518,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900511,
+    "name": "Trimurti Chowk CIDCO Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.9682,
+    "longitude": 73.7512,
+    "address": "CIDCO, Nashik"
+  },
+  {
+    "id": 900512,
+    "name": "Poornima Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.975,
+    "longitude": 73.791,
+    "address": "Nashik Pune Highway, Nashik"
+  },
+  {
+    "id": 900513,
+    "name": "Upnagar Signal Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.9612,
+    "longitude": 73.8182,
+    "address": "Upnagar, Nashik"
+  },
+  {
+    "id": 900514,
+    "name": "Satpur ITI Bus Stop",
+    "category": "bus_stop",
+    "latitude": 19.9992,
+    "longitude": 73.7412,
+    "address": "Satpur MIDC, Nashik"
+  },
+  {
+    "id": 900601,
+    "name": "State Bank of India (SBI) Main Branch",
+    "category": "bank",
+    "latitude": 19.996,
+    "longitude": 73.786,
+    "address": "Old Agra Road, Nashik"
+  },
+  {
+    "id": 900602,
+    "name": "State Bank of India College Road",
+    "category": "bank",
+    "latitude": 20.0065,
+    "longitude": 73.7635,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900603,
+    "name": "Bank of Maharashtra College Road",
+    "category": "bank",
+    "latitude": 20.005,
+    "longitude": 73.765,
+    "address": "Parijat Nagar, College Road, Nashik"
+  },
+  {
+    "id": 900604,
+    "name": "Bank of Maharashtra Gangapur Road",
+    "category": "bank",
+    "latitude": 20.018,
+    "longitude": 73.749,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900605,
+    "name": "HDFC Bank Thatte Nagar",
+    "category": "bank",
+    "latitude": 20.004,
+    "longitude": 73.7685,
+    "address": "Thatte Nagar Road, Nashik"
+  },
+  {
+    "id": 900606,
+    "name": "HDFC Bank Mumbai Agra Highway",
+    "category": "bank",
+    "latitude": 19.983,
+    "longitude": 73.785,
+    "address": "Lekha Nagar, Govind Nagar, Nashik"
+  },
+  {
+    "id": 900607,
+    "name": "ICICI Bank Sharanpur Road",
+    "category": "bank",
+    "latitude": 20.001,
+    "longitude": 73.772,
+    "address": "Sharanpur Road, Nashik"
+  },
+  {
+    "id": 900608,
+    "name": "Axis Bank Canada Corner",
+    "category": "bank",
+    "latitude": 19.998,
+    "longitude": 73.7745,
+    "address": "Canada Corner, Nashik"
+  },
+  {
+    "id": 900609,
+    "name": "Bank of Baroda Nashik Road",
+    "category": "bank",
+    "latitude": 19.9495,
+    "longitude": 73.836,
+    "address": "Jail Road, Nashik Road, Nashik"
+  },
+  {
+    "id": 900610,
+    "name": "Punjab National Bank Panchavati",
+    "category": "bank",
+    "latitude": 20.01,
+    "longitude": 73.795,
+    "address": "Panchavati Karanja, Nashik"
+  },
+  {
+    "id": 900611,
+    "name": "Kotak Mahindra Bank College Road",
+    "category": "bank",
+    "latitude": 20.007,
+    "longitude": 73.762,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900701,
+    "name": "Indian Oil Petrol Pump Mumbai Naka",
+    "category": "fuel",
+    "latitude": 19.9858,
+    "longitude": 73.7828,
+    "address": "Mumbai Naka, Highway, Nashik"
+  },
+  {
+    "id": 900702,
+    "name": "Bharat Petroleum (BPCL) Gangapur Road",
+    "category": "fuel",
+    "latitude": 20.0155,
+    "longitude": 73.7535,
+    "address": "Near Jehan Circle, Gangapur Road, Nashik"
+  },
+  {
+    "id": 900703,
+    "name": "Hindustan Petroleum (HPCL) College Road",
+    "category": "fuel",
+    "latitude": 20.0048,
+    "longitude": 73.767,
+    "address": "Near Thatte Nagar, College Road, Nashik"
+  },
+  {
+    "id": 900704,
+    "name": "Indian Oil Petrol Pump Ambad Link Rd",
+    "category": "fuel",
+    "latitude": 19.946,
+    "longitude": 73.742,
+    "address": "Ambad Satpur Link Road, Nashik"
+  },
+  {
+    "id": 900705,
+    "name": "HPCL Fuel Station Dwarka",
+    "category": "fuel",
+    "latitude": 19.9935,
+    "longitude": 73.7975,
+    "address": "Dwarka Circle, Agra Road, Nashik"
+  },
+  {
+    "id": 900706,
+    "name": "BPCL Fuel Station Nashik Road",
+    "category": "fuel",
+    "latitude": 19.9535,
+    "longitude": 73.8325,
+    "address": "Railway Station Road, Nashik Road"
+  },
+  {
+    "id": 900707,
+    "name": "Indian Oil Petrol Pump Pathardi Phata",
+    "category": "fuel",
+    "latitude": 19.9475,
+    "longitude": 73.7655,
+    "address": "Pathardi Phata, Expressway, Nashik"
+  },
+  {
+    "id": 900708,
+    "name": "HPCL Fuel Station Dindori Road",
+    "category": "fuel",
+    "latitude": 20.025,
+    "longitude": 73.805,
+    "address": "Dindori Road, Panchavati, Nashik"
+  },
+  {
+    "id": 900709,
+    "name": "Shell Petrol Pump Govind Nagar",
+    "category": "fuel",
+    "latitude": 19.981,
+    "longitude": 73.771,
+    "address": "Govind Nagar Road, Nashik"
+  },
+  {
+    "id": 900801,
+    "name": "Goda Park & Riverfront Promenade",
+    "category": "park",
+    "latitude": 20.012,
+    "longitude": 73.772,
+    "address": "Godavari Riverbank, Gangapur Road, Nashik"
+  },
+  {
+    "id": 900802,
+    "name": "Golf Club Ground & Public Park",
+    "category": "park",
+    "latitude": 19.993,
+    "longitude": 73.771,
+    "address": "Old Agra Road / Trimbak Road, Nashik"
+  },
+  {
+    "id": 900803,
+    "name": "Indira Nagar Jogging Track & Garden",
+    "category": "park",
+    "latitude": 19.962,
+    "longitude": 73.785,
+    "address": "Indira Nagar, Nashik"
+  },
+  {
+    "id": 900804,
+    "name": "Mahatma Nagar Public Park & Ground",
+    "category": "park",
+    "latitude": 20.0005,
+    "longitude": 73.755,
+    "address": "Mahatma Nagar, Nashik"
+  },
+  {
+    "id": 900805,
+    "name": "Shivaji Garden Panchavati",
+    "category": "park",
+    "latitude": 20.008,
+    "longitude": 73.795,
+    "address": "Panchavati, Nashik"
+  },
+  {
+    "id": 900806,
+    "name": "Kanifnath Nagar Park",
+    "category": "park",
+    "latitude": 19.966,
+    "longitude": 73.77,
+    "address": "Indira Nagar, Nashik"
+  },
+  {
+    "id": 900807,
+    "name": "Someshwar Botanical Garden",
+    "category": "park",
+    "latitude": 20.033,
+    "longitude": 73.731,
+    "address": "Near Someshwar Waterfall, Nashik"
+  },
+  {
+    "id": 900808,
+    "name": "Pandavleni Buddha Vihar Garden",
+    "category": "park",
+    "latitude": 19.943,
+    "longitude": 73.753,
+    "address": "Pandavleni Foothills, Nashik"
+  },
+  {
+    "id": 900809,
+    "name": "Dada Saheb Phalke Smarak Park",
+    "category": "park",
+    "latitude": 19.941,
+    "longitude": 73.751,
+    "address": "Expressway, Nashik"
+  },
+  {
+    "id": 900810,
+    "name": "CIDCO Pawan Nagar Public Garden",
+    "category": "park",
+    "latitude": 19.9755,
+    "longitude": 73.7475,
+    "address": "Pawan Nagar, CIDCO, Nashik"
+  },
+  {
+    "id": 900901,
+    "name": "The Bombay Duck Bar & Kitchen",
+    "category": "bar",
+    "latitude": 20.0075,
+    "longitude": 73.762,
+    "address": "College Road, Nashik"
+  },
+  {
+    "id": 900902,
+    "name": "Mocha Lounge & Bar",
+    "category": "bar",
+    "latitude": 20.021,
+    "longitude": 73.746,
+    "address": "Gangapur Road, Nashik"
+  },
+  {
+    "id": 900903,
+    "name": "Sula Tasting Room & Wine Bar",
+    "category": "bar",
+    "latitude": 20.0064,
+    "longitude": 73.6876,
+    "address": "Sula Vineyards, Govardhan, Nashik"
+  },
+  {
+    "id": 900904,
+    "name": "York Tasting Room & Bar",
+    "category": "bar",
+    "latitude": 20.004,
+    "longitude": 73.682,
+    "address": "York Winery, Gangapur Dam Road, Nashik"
+  },
+  {
+    "id": 900905,
+    "name": "The Vintage Bar & Resto",
+    "category": "bar",
+    "latitude": 19.986,
+    "longitude": 73.782,
+    "address": "Mumbai Naka, Nashik"
+  },
+  {
+    "id": 900906,
+    "name": "Tales & Spirits Bar",
+    "category": "bar",
+    "latitude": 20.016,
+    "longitude": 73.752,
+    "address": "Jehan Circle, Gangapur Road, Nashik"
+  },
+  {
+    "id": 900907,
+    "name": "Radisson Blu Bar & Lounge",
+    "category": "bar",
+    "latitude": 19.955,
+    "longitude": 73.76,
+    "address": "Pathardi Road, Nashik"
+  },
+  {
+    "id": 900908,
+    "name": "Hotel Green View Bar",
+    "category": "bar",
+    "latitude": 20.001,
+    "longitude": 73.773,
+    "address": "Sharanpur Road, Nashik"
+  },
+  {
+    "id": 900909,
+    "name": "Hotel Sai Palace Bar",
+    "category": "bar",
+    "latitude": 19.984,
+    "longitude": 73.78,
+    "address": "Mumbai Agra Road, Nashik"
+  },
+  {
+    "id": 900910,
+    "name": "Nashik Road Station Resto Bar",
+    "category": "bar",
+    "latitude": 19.9515,
+    "longitude": 73.833,
+    "address": "Station Road, Nashik Road"
+  }
+]

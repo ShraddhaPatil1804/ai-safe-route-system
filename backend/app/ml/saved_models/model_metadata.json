@@ -1,0 +1,72 @@
+{
+  "model_name": "RandomForestRegressor",
+  "target_name": "development_crime_risk_score",
+  "dataset_type": "DEVELOPMENT_SYNTHETIC_DATA",
+  "disclaimer": "DEVELOPMENT MODEL \u2014 TRAINED ON SYNTHETIC DATA. NOT FOR PRODUCTION USE.",
+  "trained_at": "2026-10-13 16:30:01",
+  "total_samples": 137218,
+  "train_samples": 109774,
+  "test_samples": 27444,
+  "feature_names": [
+    "crime_count",
+    "recent_crime_count",
+    "crime_density",
+    "average_severity",
+    "night_crime_ratio",
+    "min_crime_distance",
+    "length",
+    "road_type_risk",
+    "lighting_risk",
+    "is_residential",
+    "is_oneway",
+    "speed_kph",
+    "police_distance",
+    "hospital_distance",
+    "pharmacy_distance",
+    "commercial_density",
+    "isolation_risk",
+    "bar_count",
+    "liquor_shop_count"
+  ],
+  "parameters": {
+    "n_estimators": 100,
+    "max_depth": 12,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "metrics": {
+    "train": {
+      "mae": 0.0013,
+      "rmse": 0.0414,
+      "r2": 1.0
+    },
+    "test": {
+      "mae": 0.0019,
+      "rmse": 0.0491,
+      "r2": 1.0
+    }
+  },
+  "feature_importances": {
+    "average_severity": 0.4799,
+    "min_crime_distance": 0.279,
+    "crime_count": 0.1429,
+    "crime_density": 0.063,
+    "night_crime_ratio": 0.0214,
+    "recent_crime_count": 0.0137,
+    "length": 0.0,
+    "road_type_risk": 0.0,
+    "lighting_risk": 0.0,
+    "is_residential": 0.0,
+    "is_oneway": 0.0,
+    "speed_kph": 0.0,
+    "police_distance": 0.0,
+    "hospital_distance": 0.0,
+    "pharmacy_distance": 0.0,
+    "commercial_density": 0.0,
+    "isolation_risk": 0.0,
+    "bar_count": 0.0,
+    "liquor_shop_count": 0.0
+  }
+}

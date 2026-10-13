@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Nirbhaya Nav - Women Safe Navigation Nashik",
+    "slug": "women-safe-navigation-nashik",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#10B981",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.womensafe.navigation.nashik",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app requires access to your location to provide safety-aware navigation, nearest emergency facilities, and route guidance in Nashik."
+      }
+    },
+    "android": {
+      "package": "com.womensafe.navigation.nashik",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "INTERNET"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

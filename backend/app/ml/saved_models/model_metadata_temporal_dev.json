@@ -1,0 +1,75 @@
+{
+  "model_name": "RandomForestRegressor_Temporal",
+  "target_name": "future_crime_count",
+  "dataset_type": "DEVELOPMENT_SYNTHETIC_DATA_TEMPORAL",
+  "disclaimer": "PHASE 5 DEVELOPMENT MODEL \u2014 TRAINED ON SYNTHETIC DATA USING LEAKAGE-SAFE TEMPORAL VALIDATION. NOT FOR REAL-WORLD POLICE PREDICTION OR ROUTING USE.",
+  "trained_at": "2026-10-13 16:30:48",
+  "temporal_cutoff_date": "2024-04-01 00:00:00",
+  "historical_period": "2023-04-10 to 2024-03-31 (12 months)",
+  "prediction_target_period": "2024-04-01 to 2024-09-30 (6 months)",
+  "total_roads": 137218,
+  "train_samples": 109774,
+  "test_samples": 27444,
+  "feature_names": [
+    "historical_crime_count",
+    "historical_recent_crime_count",
+    "historical_crime_density",
+    "historical_average_severity",
+    "historical_night_crime_ratio",
+    "historical_min_crime_distance",
+    "length",
+    "road_type_risk",
+    "lighting_risk",
+    "is_residential",
+    "is_oneway",
+    "speed_kph",
+    "police_distance",
+    "hospital_distance",
+    "pharmacy_distance",
+    "commercial_density",
+    "isolation_risk",
+    "bar_count",
+    "liquor_shop_count"
+  ],
+  "parameters": {
+    "n_estimators": 100,
+    "max_depth": 12,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "metrics": {
+    "train": {
+      "mae": 0.0307,
+      "rmse": 0.1314,
+      "r2": 0.2617
+    },
+    "test": {
+      "mae": 0.0329,
+      "rmse": 0.1379,
+      "r2": 0.1252
+    }
+  },
+  "feature_importances": {
+    "length": 0.3901,
+    "historical_min_crime_distance": 0.2716,
+    "historical_crime_density": 0.1257,
+    "historical_average_severity": 0.0882,
+    "historical_crime_count": 0.0413,
+    "historical_night_crime_ratio": 0.0225,
+    "historical_recent_crime_count": 0.0154,
+    "speed_kph": 0.015,
+    "road_type_risk": 0.0101,
+    "lighting_risk": 0.0073,
+    "is_oneway": 0.0069,
+    "is_residential": 0.0058,
+    "police_distance": 0.0,
+    "hospital_distance": 0.0,
+    "pharmacy_distance": 0.0,
+    "commercial_density": 0.0,
+    "isolation_risk": 0.0,
+    "bar_count": 0.0,
+    "liquor_shop_count": 0.0
+  }
+}
