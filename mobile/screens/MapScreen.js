@@ -57,10 +57,9 @@ export default function MapScreen() {
     longitudeDelta: 0.09,
   });
 
-  // Routing & Time-of-Day
+  // Routing
   const [comparisonData, setComparisonData] = useState(null);
   const [selectedMode, setSelectedMode] = useState('safest');
-  const [timeOfDay, setTimeOfDay] = useState('day');
   const [calculatingRoutes, setCalculatingRoutes] = useState(false);
 
   // Turn-by-Turn Navigation state
@@ -301,16 +300,14 @@ export default function MapScreen() {
     }
   };
 
-  const calculateRoutes = async (originCoords, destCoords, overrideTimeOfDay = null) => {
+  const calculateRoutes = async (originCoords, destCoords) => {
     try {
       setCalculatingRoutes(true);
-      const activeTime = overrideTimeOfDay || timeOfDay;
       const res = await apiService.compareRoutes(
         originCoords.latitude,
         originCoords.longitude,
         destCoords.latitude,
-        destCoords.longitude,
-        activeTime
+        destCoords.longitude
       );
       setComparisonData(res);
       setSelectedMode('safest');
@@ -319,21 +316,13 @@ export default function MapScreen() {
       const safest = res.safest;
       if (safest) {
         voiceService.speak(
-          `Safest ${activeTime === 'night' ? 'night-time' : 'daytime'} route found to destination. Estimated travel time ${safest.estimated_time_minutes} minutes, safety score ${safest.safety_score} out of 100.`
+          `Safest route found to destination. Estimated travel time ${safest.estimated_time_minutes} minutes, safety score ${safest.safety_score} out of 100.`
         );
       }
     } catch (e) {
       Alert.alert('Route Error', 'Could not calculate routes. Please verify destination.');
     } finally {
       setCalculatingRoutes(false);
-    }
-  };
-
-  const toggleTimeOfDay = () => {
-    const nextTime = timeOfDay === 'day' ? 'night' : 'day';
-    setTimeOfDay(nextTime);
-    if (destination) {
-      calculateRoutes(userLocation, destination, nextTime);
     }
   };
 
@@ -470,25 +459,12 @@ export default function MapScreen() {
         /* Regular Map Exploration View */
         <>
           <View style={styles.topContainer}>
-            {/* Top Bar: Origin pill, Day/Night toggle, and Auth buttons/profile */}
+            {/* Top Bar: Origin pill on left, clearly visible Auth buttons or profile on right */}
             <View style={styles.topBarRow}>
-              <View style={styles.topLeftGroup}>
-                <View style={styles.originPill}>
-                  <Text style={styles.originPillText} numberOfLines={1}>
-                    {locLoading ? '📡 Locating...' : `🟢 ${originName}`}
-                  </Text>
-                </View>
-
-                {/* Day / Night Departure Selector */}
-                <TouchableOpacity
-                  style={[styles.timeTogglePill, timeOfDay === 'night' && styles.timeTogglePillNight]}
-                  onPress={toggleTimeOfDay}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.timeTogglePillText, timeOfDay === 'night' && styles.timeTogglePillTextNight]}>
-                    {timeOfDay === 'night' ? '🌙 Night' : '☀️ Day'}
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.originPill}>
+                <Text style={styles.originPillText}>
+                  {locLoading ? '📡 Locating GPS...' : `🟢 ${originName}`}
+                </Text>
               </View>
 
               {currentUser ? (
@@ -513,7 +489,7 @@ export default function MapScreen() {
                     onPress={() => openAuth('signup')}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.signUpButtonText}>Register</Text>
+                    <Text style={styles.signUpButtonText}>Create Account</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -540,7 +516,7 @@ export default function MapScreen() {
                 }}
               />
               {searchLoading ? (
-                <ActivityIndicator size="small" color="#6C4AB6" style={{ marginRight: 6 }} />
+                <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 6 }} />
               ) : null}
               {searchQuery ? (
                 <TouchableOpacity onPress={() => { setSearchQuery(''); setDestination(null); setComparisonData(null); setSearchResults([]); setSelectedPlaceInfo(null); }}>
@@ -614,50 +590,20 @@ export default function MapScreen() {
           </View>
 
           {/* Floating Action Buttons */}
-          <View style={[styles.fabColumn, comparisonData ? styles.fabColumnWithRoutes : null]}>
+          <View style={styles.fabColumn}>
             {/* SOS / Emergency */}
             <TouchableOpacity
               style={[styles.fabBtn, styles.sosFab]}
               onPress={() => setEmergencyVisible(true)}
-              activeOpacity={0.8}
             >
               <Text style={styles.fabEmoji}>🚨</Text>
               <Text style={styles.sosFabLabel}>SOS</Text>
             </TouchableOpacity>
 
-            {/* Day / Night Quick Toggle FAB */}
-            <TouchableOpacity
-              style={[styles.fabBtn, timeOfDay === 'night' ? styles.nightFab : styles.dayFab]}
-              onPress={toggleTimeOfDay}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.fabEmoji}>{timeOfDay === 'night' ? '🌙' : '☀️'}</Text>
-            </TouchableOpacity>
-
-            {/* Zoom In & Zoom Out Controls */}
-            <View style={styles.zoomPill}>
-              <TouchableOpacity
-                style={styles.zoomBtn}
-                onPress={() => mapRef.current?.zoomIn && mapRef.current.zoomIn()}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.zoomBtnText}>＋</Text>
-              </TouchableOpacity>
-              <View style={styles.zoomDivider} />
-              <TouchableOpacity
-                style={styles.zoomBtn}
-                onPress={() => mapRef.current?.zoomOut && mapRef.current.zoomOut()}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.zoomBtnText}>−</Text>
-              </TouchableOpacity>
-            </View>
-
             {/* Report Safety Hazard */}
             <TouchableOpacity
               style={[styles.fabBtn, styles.reportFab]}
               onPress={() => setReportVisible(true)}
-              activeOpacity={0.8}
             >
               <Text style={styles.fabEmoji}>⚠️</Text>
             </TouchableOpacity>
@@ -666,17 +612,12 @@ export default function MapScreen() {
             <TouchableOpacity
               style={[styles.fabBtn, styles.currentLocFab]}
               onPress={handleCurrentLocationPress}
-              activeOpacity={0.8}
             >
               <Text style={styles.fabEmoji}>📍</Text>
             </TouchableOpacity>
 
             {/* Recenter */}
-            <TouchableOpacity
-              style={[styles.fabBtn, styles.recenterFab]}
-              onPress={recenter}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={[styles.fabBtn, styles.recenterFab]} onPress={recenter}>
               <Text style={styles.fabEmoji}>🎯</Text>
             </TouchableOpacity>
           </View>
@@ -684,12 +625,12 @@ export default function MapScreen() {
           {/* Calculating Loading Banner */}
           {calculatingRoutes && (
             <View style={styles.loadingBanner}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.loadingText}>Computing Safest, Fastest & Balanced routes...</Text>
+              <ActivityIndicator color="#10B981" size="small" />
+              <Text style={styles.loadingText}>Evaluating road safety factors & computing routes...</Text>
             </View>
           )}
 
-          {/* Selected Place / Marker Details Card */}
+          {/* Selected Place / Marker Details Card (Google Maps Style) */}
           {(selectedPlaceInfo || selectedPoi) && !comparisonData && (
             <View style={styles.placeCardContainer}>
               {(() => {
@@ -723,45 +664,12 @@ export default function MapScreen() {
                     <TouchableOpacity
                       style={styles.navigateBtn}
                       onPress={() => handleSetPlaceAsDestination({ latitude: lat, longitude: lon }, name)}
-                      activeOpacity={0.85}
                     >
                       <Text style={styles.navigateBtnText}>🧭 Set as Destination & Route</Text>
                     </TouchableOpacity>
                   </View>
                 );
               })()}
-            </View>
-          )}
-
-          {/* Floating Route Legend Bar */}
-          {comparisonData && (
-            <View style={styles.routeLegendContainer}>
-              <TouchableOpacity
-                style={[styles.legendPill, selectedMode === 'safest' && styles.legendPillActiveSafest]}
-                onPress={() => setSelectedMode('safest')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.legendColorDot, { backgroundColor: '#10B981' }]} />
-                <Text style={[styles.legendText, selectedMode === 'safest' && styles.legendTextActive]}>🛡️ Safest</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.legendPill, selectedMode === 'fastest' && styles.legendPillActiveFastest]}
-                onPress={() => setSelectedMode('fastest')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.legendColorDot, { backgroundColor: '#3B82F6' }]} />
-                <Text style={[styles.legendText, selectedMode === 'fastest' && styles.legendTextActive]}>⚡ Fastest</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.legendPill, selectedMode === 'balanced' && styles.legendPillActiveBalanced]}
-                onPress={() => setSelectedMode('balanced')}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.legendColorDot, { backgroundColor: '#6C4AB6' }]} />
-                <Text style={[styles.legendText, selectedMode === 'balanced' && styles.legendTextActive]}>⚖️ Balanced</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -773,7 +681,6 @@ export default function MapScreen() {
                 selectedMode={selectedMode}
                 onSelectMode={setSelectedMode}
                 onStartNavigation={handleStartNavigation}
-                timeOfDay={timeOfDay}
                 onClose={() => {
                   setComparisonData(null);
                   setDestination(null);
@@ -819,7 +726,7 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F7FF',
+    backgroundColor: '#F3F4F6',
   },
   topContainer: {
     position: 'absolute',
@@ -834,53 +741,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  topLeftGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    maxWidth: '65%',
-  },
   originPill: {
-    backgroundColor: '#4E3486',
+    backgroundColor: 'rgba(17, 24, 39, 0.85)',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
-    maxWidth: '75%',
-    shadowColor: '#4E3486',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    maxWidth: '55%',
   },
   originPillText: {
-    color: '#F8F7FF',
+    color: '#F9FAFB',
     fontSize: 11,
     fontWeight: '700',
-  },
-  timeTogglePill: {
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#C4B5FD',
-    shadowColor: '#6C4AB6',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  timeTogglePillNight: {
-    backgroundColor: '#1E1B4B',
-    borderColor: '#6C4AB6',
-  },
-  timeTogglePillText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#6C4AB6',
-  },
-  timeTogglePillTextNight: {
-    color: '#FBBF24',
   },
   authButtonsRow: {
     flexDirection: 'row',
@@ -890,29 +761,29 @@ const styles = StyleSheet.create({
   signInButton: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#6C4AB6',
+    borderColor: '#1E40AF',
     paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: 14,
-    shadowColor: '#6C4AB6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 3,
   },
   signInButtonText: {
-    color: '#6C4AB6',
+    color: '#1E40AF',
     fontSize: 11,
     fontWeight: '800',
   },
   signUpButton: {
-    backgroundColor: '#6C4AB6',
+    backgroundColor: '#1E40AF',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
-    shadowColor: '#6C4AB6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
   },
@@ -922,22 +793,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   userProfilePill: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1.5,
-    borderColor: '#8D72E1',
+    borderColor: '#3B82F6',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 14,
-    shadowColor: '#6C4AB6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 3,
-    elevation: 2,
+    elevation: 3,
   },
   userProfilePillText: {
-    color: '#4E3486',
+    color: '#1E40AF',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   searchBarWrapper: {
     flexDirection: 'row',
@@ -946,12 +817,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderWidth: 1.5,
-    borderColor: '#EDE9FE',
-    shadowColor: '#6C4AB6',
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 5,
   },
   searchIcon: {
@@ -961,11 +830,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#1E1B4B',
+    color: '#111827',
   },
   clearSearchIcon: {
     fontSize: 16,
-    color: '#8D72E1',
+    color: '#9CA3AF',
     paddingHorizontal: 6,
   },
   profileBtn: {
@@ -976,40 +845,38 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   emptyCategoryBanner: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#C4B5FD',
-    borderWidth: 1.5,
-    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderRadius: 12,
     paddingVertical: 6,
     paddingHorizontal: 12,
     marginTop: 4,
   },
   emptyCategoryText: {
     fontSize: 11,
-    color: '#6C4AB6',
-    fontWeight: '700',
+    color: '#92400E',
+    fontWeight: '600',
   },
   destDropdown: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     marginTop: 6,
     padding: 10,
-    borderWidth: 1.5,
-    borderColor: '#EDE9FE',
-    shadowColor: '#4E3486',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 6,
   },
   destDropdownHeader: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#6C4AB6',
+    fontWeight: '700',
+    color: '#6B7280',
     paddingHorizontal: 6,
     paddingBottom: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F3FF',
+    borderBottomColor: '#F3F4F6',
     marginBottom: 4,
   },
   destItem: {
@@ -1018,7 +885,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8F7FF',
+    borderBottomColor: '#F3F4F6',
   },
   destItemIcon: {
     fontSize: 16,
@@ -1026,12 +893,12 @@ const styles = StyleSheet.create({
   },
   destItemName: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#1E1B4B',
+    fontWeight: '600',
+    color: '#111827',
   },
   destItemTag: {
     fontSize: 11,
-    color: '#8D72E1',
+    color: '#6B7280',
     marginTop: 1,
   },
   fabColumn: {
@@ -1049,17 +916,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#4E3486',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: '#EDE9FE',
   },
   sosFab: {
     backgroundColor: '#DC2626',
-    borderColor: '#B91C1C',
     width: 52,
     height: 52,
     borderRadius: 26,
@@ -1070,21 +934,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginTop: -2,
   },
-  dayFab: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#F59E0B',
-  },
-  nightFab: {
-    backgroundColor: '#1E1B4B',
-    borderColor: '#6C4AB6',
-  },
   reportFab: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#8D72E1',
+    backgroundColor: '#F59E0B',
   },
   currentLocFab: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#8D72E1',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
     borderWidth: 1.5,
   },
   recenterFab: {
@@ -1099,22 +954,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4E3486',
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 20,
     gap: 8,
     zIndex: 25,
-    shadowColor: '#4E3486',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   loadingText: {
-    color: '#FFFFFF',
+    color: '#F9FAFB',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   placeCardContainer: {
     position: 'absolute',
@@ -1125,15 +975,13 @@ const styles = StyleSheet.create({
   },
   placeCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 16,
-    shadowColor: '#4E3486',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 8,
-    borderWidth: 1.5,
-    borderColor: '#EDE9FE',
   },
   placeCardHeader: {
     flexDirection: 'row',
@@ -1144,11 +992,11 @@ const styles = StyleSheet.create({
   placeCardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1E1B4B',
+    color: '#111827',
   },
   placeCardTag: {
     fontSize: 12,
-    color: '#6C4AB6',
+    color: '#2563EB',
     fontWeight: '700',
     marginTop: 2,
   },
@@ -1160,29 +1008,22 @@ const styles = StyleSheet.create({
   placeCardClose: {
     padding: 4,
     marginLeft: 8,
-    backgroundColor: '#F5F3FF',
-    borderRadius: 12,
   },
   placeCardCloseText: {
-    fontSize: 14,
-    color: '#7C3AED',
+    fontSize: 16,
+    color: '#9CA3AF',
     fontWeight: 'bold',
   },
   navigateBtn: {
-    backgroundColor: '#6C4AB6',
-    borderRadius: 14,
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
-    shadowColor: '#6C4AB6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
   },
   navigateBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   bottomDrawer: {
     position: 'absolute',
@@ -1190,94 +1031,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 30,
-  },
-  fabColumnWithRoutes: {
-    bottom: 375,
-  },
-  zoomPill: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#EDE9FE',
-    overflow: 'hidden',
-    shadowColor: '#4E3486',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  zoomBtn: {
-    width: 48,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  zoomBtnText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4E3486',
-  },
-  zoomDivider: {
-    height: 1,
-    backgroundColor: '#EDE9FE',
-    marginHorizontal: 8,
-  },
-  routeLegendContainer: {
-    position: 'absolute',
-    bottom: 350,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: '#EDE9FE',
-    gap: 6,
-    zIndex: 35,
-    shadowColor: '#4E3486',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 7,
-  },
-  legendPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: '#F5F3FF',
-    gap: 6,
-  },
-  legendPillActiveSafest: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1.5,
-    borderColor: '#10B981',
-  },
-  legendPillActiveFastest: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1.5,
-    borderColor: '#3B82F6',
-  },
-  legendPillActiveBalanced: {
-    backgroundColor: '#F5F3FF',
-    borderWidth: 1.5,
-    borderColor: '#6C4AB6',
-  },
-  legendColorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4B5563',
-  },
-  legendTextActive: {
-    color: '#1E1B4B',
-    fontWeight: '800',
   },
 });

@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
+// Categories in the exact required order:
+// 1. All Markers, 2. Police, 3. Hospitals, 4. Pharmacies, 5. Restaurants,
+// 6. Cafes, 7. Bus Stops, 8. Banks, 9. Fuel, 10. Parks, 11. Bars
 export const FILTER_ITEMS = [
   { id: 'all', label: 'All Markers', icon: '📍' },
   { id: 'police', label: 'Police', icon: '👮' },
   { id: 'hospital', label: 'Hospitals', icon: '🏥' },
   { id: 'pharmacy', label: 'Pharmacies', icon: '💊' },
-  { id: 'college', label: 'Colleges', icon: '🏫' },
-  { id: 'school', label: 'Schools', icon: '🎒' },
-  { id: 'shop', label: 'Shops & Malls', icon: '🛍️' },
   { id: 'restaurant', label: 'Restaurants', icon: '🍽️' },
   { id: 'cafe', label: 'Cafes', icon: '☕' },
   { id: 'bus_stop', label: 'Bus Stops', icon: '🚌' },
@@ -31,19 +31,7 @@ export default function POIFilterBar({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Safety Heatmap Toggle Chip */}
-        <TouchableOpacity
-          style={[styles.chip, styles.heatmapChip, showHeatmap && styles.heatmapChipActive]}
-          onPress={onToggleHeatmap}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.chipIcon}>🛡️</Text>
-          <Text style={[styles.chipText, showHeatmap && styles.chipTextSelected]}>
-            {showHeatmap ? 'Hide Safety Heatmap' : 'Safety Heatmap'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* POI Category Chips */}
+        {/* POI Category Chips in exact specified order */}
         {FILTER_ITEMS.map((item) => {
           const isSelected = selectedCategory === item.id;
           return (
@@ -60,6 +48,17 @@ export default function POIFilterBar({
             </TouchableOpacity>
           );
         })}
+
+        {/* Safety Heatmap Toggle Chip */}
+        <TouchableOpacity
+          style={[styles.chip, styles.heatmapChip, showHeatmap && styles.heatmapChipActive]}
+          onPress={onToggleHeatmap}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.chipText}>
+            {showHeatmap ? '🛡️ Hide Safety Map' : '🛡️ Safety Layer'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -70,7 +69,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   scrollContent: {
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
     gap: 8,
     alignItems: 'center',
   },
@@ -78,43 +77,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 13,
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#EDE9FE',
-    shadowColor: '#6C4AB6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
-    gap: 6,
+    gap: 5,
   },
   chipSelected: {
-    backgroundColor: '#6C4AB6',
-    borderColor: '#4E3486',
-    shadowColor: '#6C4AB6',
-    shadowOpacity: 0.25,
-    elevation: 3,
+    backgroundColor: '#1E40AF',
+    borderColor: '#1E40AF',
   },
   heatmapChip: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#C4B5FD',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
   },
   heatmapChipActive: {
     backgroundColor: '#10B981',
     borderColor: '#059669',
   },
   chipIcon: {
-    fontSize: 13,
+    fontSize: 14,
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#4E3486',
+    fontWeight: '600',
+    color: '#374151',
   },
   chipTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '700',
   },
 });

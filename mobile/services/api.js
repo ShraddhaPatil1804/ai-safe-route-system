@@ -81,20 +81,19 @@ export const apiService = {
   },
 
   // Routing
-  compareRoutes: async (originLat, originLon, destLat, destLon, timeOfDay = 'day') => {
+  compareRoutes: async (originLat, originLon, destLat, destLon) => {
     const res = await api.get('/routes/compare', {
       params: {
         origin_lat: originLat,
         origin_lon: originLon,
         dest_lat: destLat,
         dest_lon: destLon,
-        time_of_day: timeOfDay,
       },
     });
     return res.data;
   },
 
-  getRoute: async (originLat, originLon, destLat, destLon, mode = 'safest', timeOfDay = 'day') => {
+  getRoute: async (originLat, originLon, destLat, destLon, mode = 'safest') => {
     const res = await api.get('/route', {
       params: {
         origin_lat: originLat,
@@ -102,7 +101,6 @@ export const apiService = {
         dest_lat: destLat,
         dest_lon: destLon,
         mode,
-        time_of_day: timeOfDay,
       },
     });
     return res.data;
@@ -136,9 +134,9 @@ export const apiService = {
   },
 
   // Safety Heatmap
-  getHeatmap: async (minLat = 19.95, minLon = 73.72, maxLat = 20.05, maxLon = 73.85, timeOfDay = 'day') => {
+  getHeatmap: async (minLat = 19.95, minLon = 73.72, maxLat = 20.05, maxLon = 73.85) => {
     const res = await api.get('/heatmap', {
-      params: { min_lat: minLat, min_lon: minLon, max_lat: maxLat, max_lon: maxLon, limit: 300, time_of_day: timeOfDay },
+      params: { min_lat: minLat, min_lon: minLon, max_lat: maxLat, max_lon: maxLon, limit: 300 },
     });
     return res.data;
   },
