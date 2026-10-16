@@ -177,10 +177,10 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   directionCard: {
-    backgroundColor: '#0F766E', // Google Maps navigation deep green
-    borderRadius: 16,
+    backgroundColor: '#4E3486', // Deep purple navigation HUD
+    borderRadius: 18,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: '#4E3486',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   primaryInstruction: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F0FDFA',
+    color: '#F5F3FF',
     marginTop: 2,
   },
   soundBtn: {
@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
   nextManeuverRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
     marginTop: 10,
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   },
   nextText: {
     fontSize: 12,
-    color: '#CCFBF1',
+    color: '#E9D5FF',
     fontWeight: '600',
     flex: 1,
   },
@@ -259,13 +259,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    shadowColor: '#000',
+    shadowColor: '#4E3486',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
     gap: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
   },
   stepNavBtn: {
     paddingVertical: 6,
@@ -280,7 +282,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   simBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#6C4AB6',
     borderRadius: 16,
     paddingVertical: 7,
     paddingHorizontal: 14,
@@ -295,16 +297,18 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 24,
-    shadowColor: '#000',
+    shadowColor: '#4E3486',
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
   },
   tripSummaryRow: {
     flexDirection: 'row',
@@ -314,12 +318,12 @@ const styles = StyleSheet.create({
   etaText: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#059669',
+    color: '#4E3486',
   },
   minUnit: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: '700',
+    color: '#6C4AB6',
   },
   distEtaSub: {
     fontSize: 12,

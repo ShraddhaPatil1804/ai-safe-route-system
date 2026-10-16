@@ -46,22 +46,23 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
             <View style={styles.titleRow}>
               <Text style={styles.sosEmoji}>🚨</Text>
               <View>
-                <Text style={styles.title}>Emergency & SOS</Text>
-                <Text style={styles.subtitle}>Instant helpline access & nearest safe facilities</Text>
+                <Text style={styles.title}>Emergency & SOS Hub</Text>
+                <Text style={styles.subtitle}>Verified helplines & 24/7 safe havens in Nashik</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* Quick SOS Dials */}
-            <Text style={styles.sectionHeading}>Emergency Helplines (Nashik / India)</Text>
+            <Text style={styles.sectionHeading}>Emergency Helplines</Text>
             <View style={styles.helplinesGrid}>
               <TouchableOpacity
                 style={[styles.helplineBtn, { backgroundColor: '#DC2626' }]}
                 onPress={() => handleCall('112')}
+                activeOpacity={0.8}
               >
                 <Text style={styles.helplineNum}>112</Text>
                 <Text style={styles.helplineLabel}>National SOS</Text>
@@ -70,14 +71,16 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
               <TouchableOpacity
                 style={[styles.helplineBtn, { backgroundColor: '#DB2777' }]}
                 onPress={() => handleCall('1091')}
+                activeOpacity={0.8}
               >
                 <Text style={styles.helplineNum}>1091</Text>
                 <Text style={styles.helplineLabel}>Women Helpline</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.helplineBtn, { backgroundColor: '#2563EB' }]}
+                style={[styles.helplineBtn, { backgroundColor: '#6C4AB6' }]}
                 onPress={() => handleCall('100')}
+                activeOpacity={0.8}
               >
                 <Text style={styles.helplineNum}>100</Text>
                 <Text style={styles.helplineLabel}>Police</Text>
@@ -86,6 +89,7 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
               <TouchableOpacity
                 style={[styles.helplineBtn, { backgroundColor: '#059669' }]}
                 onPress={() => handleCall('108')}
+                activeOpacity={0.8}
               >
                 <Text style={styles.helplineNum}>108</Text>
                 <Text style={styles.helplineLabel}>Ambulance</Text>
@@ -93,12 +97,47 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
             </View>
 
             {/* Nearest Facilities */}
-            <Text style={[styles.sectionHeading, { marginTop: 18 }]}>Nearest Safe Facilities</Text>
+            <Text style={[styles.sectionHeading, { marginTop: 20 }]}>Verified Safe Havens Nearby</Text>
 
             {loading ? (
-              <ActivityIndicator size="large" color="#DC2626" style={{ marginVertical: 20 }} />
+              <ActivityIndicator size="large" color="#6C4AB6" style={{ marginVertical: 24 }} />
             ) : facilities ? (
               <View style={styles.facilitiesList}>
+                {/* 24/7 Pharmacy Safe Haven */}
+                {facilities.pharmacy_24h && (
+                  <View style={[styles.facilityCard, styles.safeHavenCard]}>
+                    <View style={styles.badge24h}>
+                      <Text style={styles.badge24hText}>🌟 24/7 Verified Safe Haven</Text>
+                    </View>
+                    <View style={styles.facilityTop}>
+                      <Text style={styles.facilityIcon}>🏪💊</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.facilityName}>{facilities.pharmacy_24h.name}</Text>
+                        <Text style={styles.facilityDistance}>
+                          {facilities.pharmacy_24h.distance_km} km away ({facilities.pharmacy_24h.distance_meters}m)
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.facilityActions}>
+                      <TouchableOpacity
+                        style={[styles.actionCallBtn, { backgroundColor: '#6C4AB6' }]}
+                        onPress={() => handleCall(facilities.pharmacy_24h.phone || '102')}
+                      >
+                        <Text style={styles.actionCallText}>📞 Call Pharmacy</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionNavBtn}
+                        onPress={() => {
+                          onClose();
+                          onNavigateTo && onNavigateTo(facilities.pharmacy_24h);
+                        }}
+                      >
+                        <Text style={styles.actionNavText}>📍 Navigate to Haven</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 {/* Police Station */}
                 {facilities.police && (
                   <View style={styles.facilityCard}>
@@ -114,7 +153,7 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
                     <View style={styles.facilityActions}>
                       <TouchableOpacity
                         style={styles.actionCallBtn}
-                        onPress={() => handleCall(facilities.police.phone)}
+                        onPress={() => handleCall(facilities.police.phone || '112')}
                       >
                         <Text style={styles.actionCallText}>📞 Call Police (112)</Text>
                       </TouchableOpacity>
@@ -145,8 +184,8 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
                     </View>
                     <View style={styles.facilityActions}>
                       <TouchableOpacity
-                        style={styles.actionCallBtn}
-                        onPress={() => handleCall(facilities.hospital.phone)}
+                        style={[styles.actionCallBtn, { backgroundColor: '#059669' }]}
+                        onPress={() => handleCall(facilities.hospital.phone || '108')}
                       >
                         <Text style={styles.actionCallText}>📞 Call Hospital (108)</Text>
                       </TouchableOpacity>
@@ -163,15 +202,15 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
                   </View>
                 )}
 
-                {/* Pharmacy */}
-                {facilities.pharmacy && (
+                {/* Regular Pharmacy */}
+                {facilities.pharmacy && facilities.pharmacy.name !== facilities.pharmacy_24h?.name && (
                   <View style={styles.facilityCard}>
                     <View style={styles.facilityTop}>
                       <Text style={styles.facilityIcon}>💊</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.facilityName}>{facilities.pharmacy.name}</Text>
                         <Text style={styles.facilityDistance}>
-                          {facilities.pharmacy.distance_km} km away ({facilities.pharmacy.distance_meters}m)
+                          {facilities.pharmacy.distance_km} km away ({facilities.pharmacy.distance_meters}m) • {facilities.pharmacy.opening_hours || 'Daytime'}
                         </Text>
                       </View>
                     </View>
@@ -190,7 +229,7 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
                 )}
               </View>
             ) : (
-              <Text style={styles.emptyText}>No facility information available.</Text>
+              <Text style={styles.emptyText}>No emergency facility information available.</Text>
             )}
           </ScrollView>
         </View>
@@ -202,15 +241,22 @@ export default function EmergencyModal({ visible, onClose, userCoords, onNavigat
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(30, 27, 75, 0.65)',
     justifyContent: 'flex-end',
   },
   container: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: '85%',
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+    shadowColor: '#4E3486',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 16,
   },
   header: {
     flexDirection: 'row',
@@ -221,35 +267,38 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   sosEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
+    fontWeight: '900',
+    color: '#4E3486',
   },
   subtitle: {
     fontSize: 12,
     color: '#6B7280',
+    marginTop: 1,
   },
   closeBtn: {
     padding: 8,
+    borderRadius: 16,
+    backgroundColor: '#F5F3FF',
   },
   closeBtnText: {
-    fontSize: 20,
-    color: '#9CA3AF',
+    fontSize: 18,
+    color: '#7C3AED',
     fontWeight: 'bold',
   },
   sectionHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#6C4AB6',
     marginBottom: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   helplinesGrid: {
     flexDirection: 'row',
@@ -257,9 +306,14 @@ const styles = StyleSheet.create({
   },
   helplineBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   helplineNum: {
     fontSize: 18,
@@ -270,18 +324,35 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#FFFFFF',
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   facilitiesList: {
     gap: 12,
     marginBottom: 20,
   },
   facilityCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F8F7FF',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#EDE9FE',
+  },
+  safeHavenCard: {
+    borderColor: '#C4B5FD',
+    backgroundColor: '#FAF5FF',
+  },
+  badge24h: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  badge24hText: {
+    color: '#6C4AB6',
+    fontSize: 11,
+    fontWeight: '800',
   },
   facilityTop: {
     flexDirection: 'row',
@@ -294,12 +365,12 @@ const styles = StyleSheet.create({
   },
   facilityName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#1E1B4B',
   },
   facilityDistance: {
     fontSize: 12,
-    color: '#059669',
+    color: '#6C4AB6',
     fontWeight: '600',
     marginTop: 2,
   },
@@ -310,25 +381,25 @@ const styles = StyleSheet.create({
   actionCallBtn: {
     flex: 1,
     backgroundColor: '#DC2626',
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingVertical: 9,
     alignItems: 'center',
   },
   actionCallText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 12,
   },
   actionNavBtn: {
     flex: 1,
     backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingVertical: 9,
     alignItems: 'center',
   },
   actionNavText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 12,
   },
   emptyText: {
