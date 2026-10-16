@@ -167,7 +167,7 @@ export default function MapViewComponent({
         const latLngs = r.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
 
         const poly = window.L.polyline(latLngs, {
-          color: isSelected ? (mKey === 'safest' ? '#10B981' : '#2563EB') : '#94A3B8',
+          color: isSelected ? (mKey === 'safest' ? '#10B981' : (mKey === 'balanced' ? '#F59E0B' : '#2563EB')) : '#94A3B8',
           weight: isSelected ? 7 : 4,
           opacity: isSelected ? 0.95 : 0.4,
           dashArray: isSelected ? null : '6, 6',

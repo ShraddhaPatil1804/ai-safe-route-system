@@ -84,14 +84,45 @@ def run_benchmark_verification():
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Extract road-level crime features for Nashik.")
+    parser.add_argument("--synthetic", action="store_true", help="Use synthetic development dataset instead of genuine FIR records")
+    parser.add_argument("--source", type=str, default=None, help="Custom crime CSV file path")
+    parser.add_argument("--buffer", type=float, default=CRIME_ROAD_BUFFER_METERS, help="Corridor matching buffer in meters")
+    args = parser.parse_args()
+
+    buffer_meters = args.buffer
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    clean_fir = os.path.join(repo_root, "data", "crime", "nashik_fir_crimes_clean.csv")
+    raw_fir = os.path.join(repo_root, "data", "crime", "nashik_fir_crimes.csv")
+    dev_sample = os.path.join(repo_root, "data", "dev_test", "synthetic_nashik_crimes_sample.csv")
+
+    if args.synthetic:
+        crimes_source = dev_sample
+        out_csv = os.path.join(repo_root, "data", "dev_test", "road_crime_features_synthetic.csv")
+        dataset_mode = "SYNTHETIC DEVELOPMENT DATASET"
+    elif args.source:
+        crimes_source = args.source
+        out_csv = os.path.join(repo_root, "data", "dev_test", "road_crime_features.csv")
+        dataset_mode = f"CUSTOM SOURCE ({crimes_source})"
+    elif os.path.exists(clean_fir):
+        crimes_source = clean_fir
+        out_csv = os.path.join(repo_root, "data", "dev_test", "road_crime_features.csv")
+        dataset_mode = "GENUINE NASHIK POLICE FIR RECORDS"
+    else:
+        crimes_source = dev_sample
+        out_csv = os.path.join(repo_root, "data", "dev_test", "road_crime_features.csv")
+        dataset_mode = "SYNTHETIC DEVELOPMENT DATASET (FALLBACK)"
+
     print("=" * 70)
     print("AI-BASED WOMEN SAFETY NAVIGATION SYSTEM (NASHIK)")
     print("SCRIPT 06: ROAD-LEVEL CRIME FEATURE EXTRACTION (PHASE 3)")
     print("=" * 70)
-    print(f"Spatial Matching Corridor Buffer: {CRIME_ROAD_BUFFER_METERS} meters")
+    print(f"Dataset Mode:                     {dataset_mode}")
+    print(f"Crime Source File:                {crimes_source}")
+    print(f"Spatial Matching Corridor Buffer: {buffer_meters} meters")
     print(f"Recent Crime Time Window:        {RECENT_CRIME_WINDOW_DAYS} days (12 months)")
-    print(f"Default No-Crime Distance:       {DEFAULT_NO_CRIME_DISTANCE} meters")
-    print(f"Dataset Flag:                    is_development_data = TRUE (DEV FIXTURES)\n")
+    print(f"Default No-Crime Distance:       {DEFAULT_NO_CRIME_DISTANCE} meters\n")
 
     t_start = time.time()
     conn = try_db_connection()
@@ -106,19 +137,19 @@ def main():
             r_cnt = cur.fetchone()[0]
             if c_cnt > 0 and r_cnt > 0:
                 print(f"[Database] Found {c_cnt} crime records and {r_cnt} roads in PostgreSQL.")
-                result = extract_features_postgis(cur, conn, buffer_meters=CRIME_ROAD_BUFFER_METERS)
+                result = extract_features_postgis(cur, conn, buffer_meters=buffer_meters, use_fir=not args.synthetic)
             else:
                 print("[Database] Tables empty. Falling back to local spatial datasets...")
-                result = extract_features_offline(buffer_meters=CRIME_ROAD_BUFFER_METERS)
+                result = extract_features_offline(buffer_meters=buffer_meters, crimes_source=crimes_source, out_csv_path=out_csv)
         except Exception as e:
             print(f"[Database Error] {e}. Falling back to local spatial datasets...")
-            result = extract_features_offline(buffer_meters=CRIME_ROAD_BUFFER_METERS)
+            result = extract_features_offline(buffer_meters=buffer_meters, crimes_source=crimes_source, out_csv_path=out_csv)
         finally:
             cur.close()
             conn.close()
     else:
         print("[Database] PostgreSQL not running on port 5434. Running offline spatial indexer...")
-        result = extract_features_offline(buffer_meters=CRIME_ROAD_BUFFER_METERS)
+        result = extract_features_offline(buffer_meters=buffer_meters, crimes_source=crimes_source, out_csv_path=out_csv)
 
     df = result["df"]
     total_crimes = result["total_crimes"]
@@ -127,19 +158,21 @@ def main():
     total_roads = len(df)
     roads_with_crime = len(df[df["crime_count"] > 0])
     roads_without_crime = len(df[df["crime_count"] == 0])
+    is_dev = bool(df["is_development_data"].iloc[0]) if len(df) > 0 else False
 
     print("\n" + "=" * 70)
     print("PHASE 3 FEATURE EXTRACTION SUMMARY")
     print("=" * 70)
     print(f"Execution Mode:                     {result['mode']}")
     print(f"1. Total Crime Records Processed:   {total_crimes}")
-    print(f"2. Crimes Matched within {int(CRIME_ROAD_BUFFER_METERS)}m:     {matched_crimes} ({matched_crimes/total_crimes*100:.1f}%)")
+    print(f"2. Crimes Matched within {int(buffer_meters)}m:     {matched_crimes} ({matched_crimes/total_crimes*100:.1f}%)")
     print(f"3. Unmatched Crimes (outside road): {unmatched_crimes} ({unmatched_crimes/total_crimes*100:.1f}%)")
     print(f"4. Total Road Segments Processed:   {total_roads}")
     print(f"5. Roads with Associated Crimes:    {roads_with_crime} ({roads_with_crime/total_roads*100:.2f}%)")
     print(f"6. Roads with Zero Crimes:          {roads_without_crime} ({roads_without_crime/total_roads*100:.2f}%)")
     print(f"7. Canonical Road ID Key:           roads.id confirmed (min={df['road_id'].min()}, max={df['road_id'].max()})")
-    print(f"8. Development Data Tag:            100% rows marked is_development_data = TRUE")
+    print(f"8. Dataset Provenance Flag:         is_development_data = {is_dev}")
+    print(f"9. Generated Features Output:       {out_csv}")
     print(f"Total Extraction Time:              {time.time() - t_start:.2f}s")
     print("=" * 70)
 

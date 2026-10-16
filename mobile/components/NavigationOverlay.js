@@ -52,9 +52,11 @@ export default function NavigationOverlay({
     voiceService.setMuted(next);
   };
 
-  // Calculate arrival time
+  // Deterministic travel-time display (derived from road segment lengths and speed limits)
+  const safeMinutes = (typeof totalMinutes === 'number' && !isNaN(totalMinutes)) ? totalMinutes : 1;
+  const safeDistance = (typeof totalDistanceKm === 'number' && !isNaN(totalDistanceKm)) ? totalDistanceKm : 0.0;
   const now = new Date();
-  const arrivalDate = new Date(now.getTime() + (totalMinutes || 15) * 60000);
+  const arrivalDate = new Date(now.getTime() + safeMinutes * 60000);
   const arrivalTimeStr = arrivalDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const icon = currentStep ? (MANEUVER_ICONS[currentStep.modifier] || '⬆️') : '⬆️';
@@ -135,10 +137,10 @@ export default function NavigationOverlay({
         <View style={styles.tripSummaryRow}>
           <View>
             <Text style={styles.etaText}>
-              {totalMinutes || 15} <Text style={styles.minUnit}>min</Text>
+              {safeMinutes} <Text style={styles.minUnit}>min</Text>
             </Text>
             <Text style={styles.distEtaSub}>
-              {totalDistanceKm || 5.2} km • Arrive at {arrivalTimeStr}
+              {safeDistance} km • ETA {arrivalTimeStr} (Road speeds)
             </Text>
           </View>
 

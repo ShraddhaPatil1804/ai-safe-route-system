@@ -56,23 +56,27 @@ def get_maneuver(prev_bearing: float, next_bearing: float, street_name: str) -> 
     else:
         return "uturn", f"Make a U-turn {st}".strip()
 
+# Road speed values in meters per second (m/s) based on standard OpenStreetMap road hierarchy.
+# Used for deterministic travel-time calculation: travel_time_sec = length_meters / speed_m_s.
+# In the absence of live traffic sensor data, travel times are derived strictly from these
+# documented speed values and actual road segment geometries.
 SPEED_M_S = {
-    "motorway": 16.6,
-    "trunk": 15.0,
-    "primary": 12.5,
-    "primary_link": 10.0,
-    "secondary": 10.0,
-    "secondary_link": 8.5,
-    "tertiary": 8.3,
-    "tertiary_link": 7.0,
-    "residential": 6.9,
-    "living_street": 5.5,
-    "service": 4.5,
-    "unclassified": 6.0,
-    "footway": 1.4,
-    "pedestrian": 1.4,
-    "path": 1.4,
-    "unknown": 6.0
+    "motorway": 16.6,        # ~60 km/h (divided high-speed expressway/bypass)
+    "trunk": 15.0,           # ~54 km/h (major arterial road)
+    "primary": 12.5,         # ~45 km/h (city primary arterial road)
+    "primary_link": 10.0,    # ~36 km/h (arterial slip road/connector)
+    "secondary": 10.0,       # ~36 km/h (city secondary connector road)
+    "secondary_link": 8.5,   # ~30 km/h (secondary slip road)
+    "tertiary": 8.3,         # ~30 km/h (standard urban collector street)
+    "tertiary_link": 7.0,    # ~25 km/h (collector slip road)
+    "residential": 6.9,      # ~25 km/h (local residential neighborhood street)
+    "living_street": 5.5,    # ~20 km/h (pedestrian-priority shared street)
+    "service": 4.5,          # ~16 km/h (access lane, alley, or driveway)
+    "unclassified": 6.0,     # ~22 km/h (minor unclassified road)
+    "footway": 1.4,          # ~5 km/h (pedestrian walkway/footpath)
+    "pedestrian": 1.4,       # ~5 km/h (pedestrian zone)
+    "path": 1.4,             # ~5 km/h (general non-motorized path)
+    "unknown": 6.0           # ~22 km/h (standard default fallback)
 }
 
 class NashikRoadNetwork:
@@ -261,13 +265,187 @@ class NashikRoadNetwork:
             # Strictly time-based: minimizes travel duration
             return travel_time
         elif mode == "balanced":
-            # Medium: safer than fastest, but slightly slower according to time
-            risk = max(0.0, (100.0 - safety) / 40.0)
-            return travel_time * (1.0 + 1.5 * (risk ** 1.3))
+            # Balanced: trades off travel time and safety risk without extreme circuitous detours
+            risk = max(0.0, (100.0 - safety) / 50.0)
+            return travel_time * (1.0 + 0.5 * risk)
         else:  # safest
             # Maximum safety: prioritizes high-safety corridors, lighting, and emergency access
             risk = max(0.0, (100.0 - safety) / 25.0)
             return travel_time * (1.0 + 5.0 * (risk ** 2.0))
+
+    def _generate_candidate_paths(self, start_node: int, end_node: int) -> List[List[int]]:
+        """
+        Generate a bounded set of valid, loop-free candidate paths connecting start_node
+        and end_node on the real road network. Respects graph directionality.
+        """
+        dest_data = self.graph.nodes[end_node]
+        dest_coord = (dest_data["lat"], dest_data["lon"])
+
+        # Max vehicle speed on primary/motorway is 16.6 m/s
+        # Admissible travel time lower bound heuristic
+        def astar_heuristic(u, v_target):
+            u_data = self.graph.nodes[u]
+            h_dist = haversine_meters(u_data["lat"], u_data["lon"], dest_coord[0], dest_coord[1])
+            return h_dist / 16.6
+
+        raw_candidates = []
+
+        # Candidate 1: Shortest estimated travel time
+        try:
+            p_fast = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: d.get("travel_time_sec", d.get("length", 50.0) / 6.0)
+            )
+            raw_candidates.append(p_fast)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 2: Safest objective
+        try:
+            p_safe = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: self._get_cost(u, v, d, "safest")
+            )
+            raw_candidates.append(p_safe)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 3: Balanced objective
+        try:
+            p_bal = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: self._get_cost(u, v, d, "balanced")
+            )
+            raw_candidates.append(p_bal)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 4: Alternative corridor diverting from primary fastest corridor
+        if raw_candidates:
+            p_fast = raw_candidates[0]
+            # Exclude terminal access edges (first 2, last 2) so alternatives don't fail at cul-de-sacs/endpoints
+            p_fast_mid = set(zip(p_fast[2:-2], p_fast[3:-1])) if len(p_fast) > 4 else set(zip(p_fast[:-1], p_fast[1:]))
+            def pen_fast(u, v, d):
+                base = d.get("travel_time_sec", d.get("length", 50.0) / 6.0)
+                return base * 3.0 if (u, v) in p_fast_mid else base
+            try:
+                p_alt1 = nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=pen_fast)
+                raw_candidates.append(p_alt1)
+            except Exception:
+                pass
+
+        # Candidate 5: Alternative corridor diverting from primary safest corridor
+        if len(raw_candidates) >= 2:
+            p_safe = raw_candidates[1]
+            p_safe_mid = set(zip(p_safe[2:-2], p_safe[3:-1])) if len(p_safe) > 4 else set(zip(p_safe[:-1], p_safe[1:]))
+            def pen_safe(u, v, d):
+                base = self._get_cost(u, v, d, "safest")
+                return base * 3.0 if (u, v) in p_safe_mid else base
+            try:
+                p_alt2 = nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=pen_safe)
+                raw_candidates.append(p_alt2)
+            except Exception:
+                pass
+
+        # Fallback if no directed path found via A*
+        if not raw_candidates:
+            try:
+                p_bidi = nx.bidirectional_shortest_path(self.graph, start_node, end_node)
+                raw_candidates.append(p_bidi)
+            except Exception:
+                try:
+                    undir = self.graph.to_undirected(as_view=True)
+                    p_undir = nx.shortest_path(undir, start_node, end_node)
+                    raw_candidates.append(p_undir)
+                except Exception:
+                    return []
+
+        # Deduplicate candidates and filter out trivial deviations (>98% edge overlap)
+        unique_candidates = []
+        unique_edge_sets = []
+        for p in raw_candidates:
+            p_edges = set(zip(p[:-1], p[1:]))
+            is_dup = False
+            for u_edges in unique_edge_sets:
+                if not p_edges or not u_edges:
+                    continue
+                overlap = len(p_edges.intersection(u_edges)) / min(len(p_edges), len(u_edges))
+                if overlap > 0.98:  # 98% edge overlap is a trivial 1-node variation
+                    is_dup = True
+                    break
+            if not is_dup:
+                unique_candidates.append(p)
+                unique_edge_sets.append(p_edges)
+
+        return unique_candidates
+
+    def _evaluate_candidate(self, path: List[int]) -> Dict[str, Any]:
+        """
+        Evaluate candidate route metrics directly and independently from constituent edges.
+        """
+        total_length = 0.0
+        total_travel_time_sec = 0.0
+        weighted_safety = 0.0
+        cost_fastest = 0.0
+        cost_balanced = 0.0
+        cost_safest = 0.0
+
+        for i in range(len(path) - 1):
+            u = path[i]
+            v = path[i + 1]
+            edge = self.graph.get_edge_data(u, v)
+            if not edge:
+                edge = self.graph.get_edge_data(v, u) or {}
+
+            length = edge.get("length", 50.0)
+            travel_time = edge.get("travel_time_sec", length / 6.0)
+            safety = edge.get("safety_score", 50.0)
+
+            total_length += length
+            total_travel_time_sec += travel_time
+            weighted_safety += (length * safety)
+
+            cost_fastest += travel_time
+            cost_balanced += self._get_cost(u, v, edge, "balanced")
+            cost_safest += self._get_cost(u, v, edge, "safest")
+
+        avg_safety = round(weighted_safety / total_length, 1) if total_length > 0 else 50.0
+        distance_km = round(total_length / 1000.0, 2)
+        est_minutes = max(1, int(round(total_travel_time_sec / 60.0))) if total_travel_time_sec > 0 else 1
+
+        return {
+            "path": path,
+            "distance_km": distance_km,
+            "estimated_time_minutes": est_minutes,
+            "travel_time_sec": total_travel_time_sec,
+            "safety_score": avg_safety,
+            "cost_fastest": cost_fastest,
+            "cost_balanced": cost_balanced,
+            "cost_safest": cost_safest,
+        }
+
+    def _select_candidates_for_modes(self, candidates: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Select optimal candidate for each of the three modes:
+        - Fastest: strictly minimizes travel_time_sec (tie-break on safety_score).
+        - Safest: minimizes cost_safest (prioritizes high safety while considering travel time).
+        - Balanced: minimizes cost_balanced (reasonable trade-off between travel time and safety).
+        """
+        if not candidates:
+            return {}
+
+        best_fastest = min(candidates, key=lambda c: (c["travel_time_sec"], -c["safety_score"]))
+        best_safest = min(candidates, key=lambda c: (c["cost_safest"], c["travel_time_sec"]))
+        best_balanced = min(candidates, key=lambda c: (c["cost_balanced"], c["travel_time_sec"]))
+
+        return {
+            "fastest": best_fastest,
+            "safest": best_safest,
+            "balanced": best_balanced,
+        }
 
     def calculate_route(
         self,
@@ -288,31 +466,19 @@ class NashikRoadNetwork:
         if start_node == end_node:
             return self._create_empty_route(mode_clean, origin_lat, origin_lon)
 
-        weight_func = lambda u, v, d: self._get_cost(u, v, d, mode_clean)
+        candidates = self._generate_candidate_paths(start_node, end_node)
+        if not candidates:
+            return self._create_empty_route(mode_clean, origin_lat, origin_lon, dest_lat, dest_lon)
 
-        dest_data = self.graph.nodes[end_node]
-        dest_coord = (dest_data["lat"], dest_data["lon"])
+        evaluated = [self._evaluate_candidate(p) for p in candidates]
+        selected_map = self._select_candidates_for_modes(evaluated)
+        selected = selected_map.get(mode_clean, evaluated[0])
 
-        # Max vehicle speed on primary/motorway is 16.6 m/s
-        # Admissible travel time lower bound heuristic
-        def astar_heuristic(u, v_target):
-            u_data = self.graph.nodes[u]
-            h_dist = haversine_meters(u_data["lat"], u_data["lon"], dest_coord[0], dest_coord[1])
-            return h_dist / 16.6
-
-        try:
-            path = nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=weight_func)
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            try:
-                path = nx.bidirectional_shortest_path(self.graph, start_node, end_node)
-            except Exception:
-                try:
-                    undir = self.graph.to_undirected(as_view=True)
-                    path = nx.shortest_path(undir, start_node, end_node, weight=weight_func)
-                except Exception:
-                    return self._create_empty_route(mode_clean, origin_lat, origin_lon, dest_lat, dest_lon)
-
-        return self._build_route_output(path, mode_clean, origin_lat, origin_lon, dest_lat, dest_lon)
+        has_alternatives = len(candidates) > 1
+        return self._build_route_output(
+            selected["path"], mode_clean, origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
 
 
     def _build_route_output(
@@ -320,7 +486,8 @@ class NashikRoadNetwork:
         path: List[int],
         mode: str,
         origin_lat: float, origin_lon: float,
-        dest_lat: float, dest_lon: float
+        dest_lat: float, dest_lon: float,
+        has_alternatives: bool = True
     ) -> Dict[str, Any]:
         total_length = 0.0
         total_travel_time_sec = 0.0
@@ -525,7 +692,8 @@ class NashikRoadNetwork:
 
         if not explanations:
             explanations.append("Standard navigational corridor with verified road network coverage")
-
+        if not has_alternatives:
+            explanations.append("Single physical corridor; alternative routes unavailable in graph")
 
         distance_km = round(total_length / 1000.0, 2)
         est_minutes = max(1, int(round(total_travel_time_sec / 60.0)))
@@ -542,7 +710,8 @@ class NashikRoadNetwork:
             },
             "explanation": explanations,
             "segments": segments[:15],
-            "steps": steps
+            "steps": steps,
+            "node_sequence": path
         }
 
     def _create_empty_route(self, mode: str, o_lat: float, o_lon: float, d_lat: float = None, d_lon: float = None) -> Dict[str, Any]:
@@ -553,10 +722,14 @@ class NashikRoadNetwork:
         else:
             dist = 0.0
 
+        # Nominal driving speed 30 km/h (8.33 m/s) matching urban tertiary street speed
+        dur_s = int(round(dist * 1000.0 / 8.33)) if dist > 0 else 0
+        est_minutes = max(1, int(round(dur_s / 60.0))) if dist > 0 else 0
+
         return {
             "route_type": mode,
             "distance_km": dist,
-            "estimated_time_minutes": max(1, int(dist * 2.5)),
+            "estimated_time_minutes": est_minutes,
             "safety_score": 65.0,
             "safety_level": "Safe",
             "geometry": {
@@ -571,8 +744,8 @@ class NashikRoadNetwork:
                     "modifier": "depart",
                     "instruction": "Proceed towards destination",
                     "distance_meters": dist * 1000.0,
-                    "distance_text": f"{dist} km",
-                    "duration_sec": int(dist * 150),
+                    "distance_text": f"{dist} km" if dist >= 1.0 else f"{int(dist * 1000)} m",
+                    "duration_sec": dur_s,
                     "street_name": "Direct Route",
                     "safety_score": 65.0,
                     "safety_level": "Safe",
@@ -590,7 +763,8 @@ class NashikRoadNetwork:
                     "safety_level": "Safe",
                     "coordinates": coords[-1:]
                 }
-            ]
+            ],
+            "node_sequence": []
         }
 
     def compare_routes(
@@ -598,9 +772,56 @@ class NashikRoadNetwork:
         origin_lat: float, origin_lon: float,
         dest_lat: float, dest_lon: float
     ) -> Dict[str, Any]:
-        fastest_r = self.calculate_route(origin_lat, origin_lon, dest_lat, dest_lon, mode="fastest")
-        safest_r = self.calculate_route(origin_lat, origin_lon, dest_lat, dest_lon, mode="safest")
-        balanced_r = self.calculate_route(origin_lat, origin_lon, dest_lat, dest_lon, mode="balanced")
+        if not self.is_loaded:
+            self.load_network()
+
+        start_node = self.find_nearest_node(origin_lat, origin_lon)
+        end_node = self.find_nearest_node(dest_lat, dest_lon)
+
+        if start_node == end_node:
+            f = self._create_empty_route("fastest", origin_lat, origin_lon)
+            s = self._create_empty_route("safest", origin_lat, origin_lon)
+            b = self._create_empty_route("balanced", origin_lat, origin_lon)
+            return {
+                "origin": {"latitude": origin_lat, "longitude": origin_lon},
+                "destination": {"latitude": dest_lat, "longitude": dest_lon},
+                "fastest": f,
+                "safest": s,
+                "balanced": b
+            }
+
+        candidates = self._generate_candidate_paths(start_node, end_node)
+        if not candidates:
+            f = self._create_empty_route("fastest", origin_lat, origin_lon, dest_lat, dest_lon)
+            s = self._create_empty_route("safest", origin_lat, origin_lon, dest_lat, dest_lon)
+            b = self._create_empty_route("balanced", origin_lat, origin_lon, dest_lat, dest_lon)
+            return {
+                "origin": {"latitude": origin_lat, "longitude": origin_lon},
+                "destination": {"latitude": dest_lat, "longitude": dest_lon},
+                "fastest": f,
+                "safest": s,
+                "balanced": b
+            }
+
+        evaluated = [self._evaluate_candidate(p) for p in candidates]
+        selected_map = self._select_candidates_for_modes(evaluated)
+        has_alternatives = len(candidates) > 1
+
+        fastest_r = self._build_route_output(
+            selected_map["fastest"]["path"], "fastest",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
+        safest_r = self._build_route_output(
+            selected_map["safest"]["path"], "safest",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
+        balanced_r = self._build_route_output(
+            selected_map["balanced"]["path"], "balanced",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
 
         return {
             "origin": {"latitude": origin_lat, "longitude": origin_lon},

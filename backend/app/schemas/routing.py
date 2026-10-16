@@ -31,6 +31,7 @@ class RouteResponse(BaseModel):
     explanation: List[str]
     segments: Optional[List[RouteSegment]] = None
     steps: Optional[List[NavigationStep]] = None
+    node_sequence: Optional[List[int]] = None
 
 class RouteComparisonResponse(BaseModel):
     origin: Dict[str, float]

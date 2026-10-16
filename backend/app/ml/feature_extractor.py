@@ -42,14 +42,15 @@ LAT_SCALE = 111000.0   # Meters per degree latitude
 LON_SCALE = 104300.0   # Meters per degree longitude at ~20°N
 
 
-def extract_features_postgis(cur, conn, buffer_meters: float = CRIME_ROAD_BUFFER_METERS):
+def extract_features_postgis(cur, conn, buffer_meters: float = CRIME_ROAD_BUFFER_METERS, use_fir: bool = True):
     """
     Executes PostGIS corridor spatial matching directly inside PostgreSQL.
     """
-    print(f"[PostGIS] Running spatial join with buffer = {buffer_meters}m...")
+    is_dev = not use_fir
+    print(f"[PostGIS] Running spatial join with buffer = {buffer_meters}m (is_development_data = {is_dev})...")
 
     # 1. Total crimes in table
-    cur.execute("SELECT count(*) FROM crime_records WHERE is_development_data = TRUE;")
+    cur.execute("SELECT count(*) FROM crime_records WHERE is_development_data = %s;", (is_dev,))
     total_crimes = cur.fetchone()[0]
 
     # 2. Number of crimes matched within buffer
@@ -57,13 +58,13 @@ def extract_features_postgis(cur, conn, buffer_meters: float = CRIME_ROAD_BUFFER
         SELECT count(DISTINCT c.id)
         FROM crime_records c
         JOIN roads r ON ST_DWithin(r.geometry::geography, c.geometry::geography, %s)
-        WHERE c.is_development_data = TRUE;
-    """, (buffer_meters,))
+        WHERE c.is_development_data = %s;
+    """, (buffer_meters, is_dev))
     matched_crimes = cur.fetchone()[0]
     unmatched_crimes = total_crimes - matched_crimes
 
     # Cutoff date for recent crimes (last 365 days from newest record)
-    cur.execute("SELECT MAX(crime_date) FROM crime_records;")
+    cur.execute("SELECT MAX(crime_date) FROM crime_records WHERE is_development_data = %s;", (is_dev,))
     max_date = cur.fetchone()[0] or datetime.now()
     cutoff_date = max_date - timedelta(days=RECENT_CRIME_WINDOW_DAYS)
 
@@ -149,26 +150,52 @@ def extract_features_postgis(cur, conn, buffer_meters: float = CRIME_ROAD_BUFFER
     }
 
 
-def extract_features_offline(buffer_meters: float = CRIME_ROAD_BUFFER_METERS):
+def extract_features_offline(
+    buffer_meters: float = CRIME_ROAD_BUFFER_METERS,
+    crimes_source: str = None,
+    out_csv_path: str = None
+):
     """
     High-performance spatial fallback when PostgreSQL is offline.
-    Uses Shapely STRtree spatial indexing on nodes.csv / edges.csv and synthetic crimes CSV.
+    Uses Shapely STRtree spatial indexing on nodes.csv / edges.csv and crime CSVs.
+    Can match genuine FIR records (REAL_FIR) or synthetic development test fixtures.
     """
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    crimes_path = os.path.join(repo_root, "data", "dev_test", "synthetic_nashik_crimes_sample.csv")
+    
+    # Priority: explicit source -> clean FIR CSV -> raw FIR CSV -> synthetic dev sample
+    clean_fir = os.path.join(repo_root, "data", "crime", "nashik_fir_crimes_clean.csv")
+    raw_fir = os.path.join(repo_root, "data", "crime", "nashik_fir_crimes.csv")
+    dev_sample = os.path.join(repo_root, "data", "dev_test", "synthetic_nashik_crimes_sample.csv")
+
+    if crimes_source and os.path.exists(crimes_source):
+        crimes_path = crimes_source
+    elif os.path.exists(clean_fir):
+        crimes_path = clean_fir
+    elif os.path.exists(raw_fir):
+        crimes_path = raw_fir
+    elif os.path.exists(dev_sample):
+        crimes_path = dev_sample
+    else:
+        raise FileNotFoundError(f"No crime datasets found in {repo_root}/data/crime/ or {repo_root}/data/dev_test/.")
+
     nodes_path = os.path.join(repo_root, "data", "raw", "nodes.csv")
     edges_path = os.path.join(repo_root, "data", "raw", "edges.csv")
 
-    if not os.path.exists(crimes_path):
-        raise FileNotFoundError(f"Synthetic crimes CSV not found at {crimes_path}. Run 05_download_crime.py first.")
-
     t0 = time.time()
-    print(f"[Offline Spatial] Loading synthetic crimes from {crimes_path}...")
+    print(f"[Offline Spatial] Loading crimes from {crimes_path}...")
     crimes_df = pd.read_csv(crimes_path, comment="#")
+
+    # Filter out records with missing coordinates if raw CSV was passed
+    if "latitude" in crimes_df.columns and "longitude" in crimes_df.columns:
+        crimes_df = crimes_df.dropna(subset=["latitude", "longitude"]).copy().reset_index(drop=True)
     total_crimes = len(crimes_df)
 
+    # Detect if dataset is synthetic or genuine FIRs
+    is_dev = crimes_df.get("is_development_data", pd.Series([False]*total_crimes)).iloc[0] if "is_development_data" in crimes_df.columns else False
+    record_origin = crimes_df.get("record_origin", pd.Series(["REAL_FIR"]*total_crimes)).iloc[0] if "record_origin" in crimes_df.columns else "REAL_FIR"
+
     # Reference 12-month temporal window
-    crimes_df["crime_date"] = pd.to_datetime(crimes_df["crime_date"])
+    crimes_df["crime_date"] = pd.to_datetime(crimes_df["crime_date"], errors="coerce")
     max_date = crimes_df["crime_date"].max()
     cutoff_date = max_date - timedelta(days=RECENT_CRIME_WINDOW_DAYS)
     crimes_df["is_recent"] = crimes_df["crime_date"] >= cutoff_date
@@ -293,7 +320,7 @@ def extract_features_offline(buffer_meters: float = CRIME_ROAD_BUFFER_METERS):
             avg_s,
             ngt_ratio,
             m_dist,
-            True
+            is_dev
         ))
 
     df_features = pd.DataFrame(feature_rows, columns=[
@@ -303,9 +330,14 @@ def extract_features_offline(buffer_meters: float = CRIME_ROAD_BUFFER_METERS):
     ])
 
     # Save to CSV fixture
-    out_dir = os.path.join(repo_root, "data", "dev_test")
-    os.makedirs(out_dir, exist_ok=True)
-    out_csv = os.path.join(out_dir, "road_crime_features.csv")
+    if out_csv_path:
+        out_csv = out_csv_path
+        os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+    else:
+        out_dir = os.path.join(repo_root, "data", "dev_test")
+        os.makedirs(out_dir, exist_ok=True)
+        out_csv = os.path.join(out_dir, "road_crime_features.csv")
+
     df_features.to_csv(out_csv, index=False)
     print(f"[Offline Spatial] Saved road crime features for {len(df_features)} roads to {out_csv} in {time.time() - t0:.2f}s")
 

@@ -10,6 +10,7 @@ import {
   Alert,
   SafeAreaView,
   StatusBar,
+  Modal,
 } from 'react-native';
 import * as Location from 'expo-location';
 
@@ -29,6 +30,7 @@ const NASHIK_HUBS = [
   { name: '🚉 Nashik Road Station', lat: 19.953, lon: 73.834 },
   { name: '🏫 College Road (BYK)', lat: 20.005, lon: 73.765 },
   { name: '🛕 Panchavati (Ramkund)', lat: 20.008, lon: 73.793 },
+  { name: '🏛️ Indira Nagar', lat: 19.965, lon: 73.775 },
 ];
 
 export default function MapScreen() {
@@ -38,8 +40,13 @@ export default function MapScreen() {
     latitude: 19.953,
     longitude: 73.834, // Default hub in Nashik
   });
+  const [selectedOriginLocation, setSelectedOriginLocation] = useState({
+    latitude: 19.953,
+    longitude: 73.834,
+  });
   const [originName, setOriginName] = useState('Your Current Location');
   const [locLoading, setLocLoading] = useState(true);
+  const [showOriginModal, setShowOriginModal] = useState(false);
 
   // Destination & search
   const [destination, setDestination] = useState(null);
@@ -151,6 +158,7 @@ export default function MapScreen() {
 
         if (inNashik) {
           setUserLocation(coords);
+          setSelectedOriginLocation(coords);
           setOriginName('📍 Your Current GPS Location');
           setRegion({ ...coords, latitudeDelta: 0.05, longitudeDelta: 0.05 });
         } else {
@@ -180,6 +188,7 @@ export default function MapScreen() {
       const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       setRealGpsLocation(coords);
       setUserLocation(coords);
+      setSelectedOriginLocation(coords);
       setOriginName('📍 Your Current GPS Location');
 
       if (mapRef.current) {
@@ -195,15 +204,27 @@ export default function MapScreen() {
   };
 
   const handleSelectOriginHub = (hub) => {
+    setShowOriginModal(false);
+    let originCoords = null;
     if (hub.isGps && realGpsLocation) {
-      setUserLocation(realGpsLocation);
+      originCoords = realGpsLocation;
       setOriginName('📍 Live GPS Location');
     } else if (hub.lat && hub.lon) {
-      setUserLocation({ latitude: hub.lat, longitude: hub.lon });
+      originCoords = { latitude: hub.lat, longitude: hub.lon };
       setOriginName(hub.name);
     }
-    if (destination) {
-      calculateRoutes({ latitude: hub.lat || realGpsLocation.latitude, longitude: hub.lon || realGpsLocation.longitude }, destination);
+    if (originCoords) {
+      setUserLocation(originCoords);
+      setSelectedOriginLocation(originCoords);
+      if (destination) {
+        calculateRoutes(originCoords, destination);
+      } else if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          ...originCoords,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }, 500);
+      }
     }
   };
 
@@ -241,7 +262,7 @@ export default function MapScreen() {
     }
   };
 
-  // When a search result is selected: centers map, places marker, shows place details card
+  // When a search result is selected: auto-routes to that destination directly
   const handleSelectSearchResult = (place) => {
     const coords = {
       latitude: place.latitude !== undefined ? place.latitude : place.lat,
@@ -250,27 +271,8 @@ export default function MapScreen() {
 
     setShowDestList(false);
     setSelectedPoi(null);
-    setSelectedPlaceInfo({
-      name: place.name,
-      tag: place.tag || 'Location',
-      address: place.address || '',
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-    });
-
-    // Center map on result
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        ...coords,
-        latitudeDelta: 0.015,
-        longitudeDelta: 0.015,
-      }, 600);
-    }
-    setRegion({
-      ...coords,
-      latitudeDelta: 0.015,
-      longitudeDelta: 0.015,
-    });
+    setSelectedPlaceInfo(null);
+    handleSetPlaceAsDestination(coords, place.name);
   };
 
   // Use place as navigation destination
@@ -279,16 +281,19 @@ export default function MapScreen() {
     setSearchQuery(placeName || `Destination (${placeCoords.latitude.toFixed(3)}, ${placeCoords.longitude.toFixed(3)})`);
     setSelectedPlaceInfo(null);
     setSelectedPoi(null);
-    calculateRoutes(userLocation, placeCoords);
+    setUserLocation(selectedOriginLocation);
+    calculateRoutes(selectedOriginLocation, placeCoords);
   };
 
   const handleSelectMarker = (poi) => {
+    setComparisonData(null);
     setSelectedPlaceInfo(null);
     setSelectedPoi(poi);
   };
 
   const handleMapPress = (coords) => {
     if (!isNavigating) {
+      setComparisonData(null);
       setSelectedPlaceInfo({
         name: `Pinned Location (${coords.latitude.toFixed(3)}, ${coords.longitude.toFixed(3)})`,
         tag: 'Map Pin',
@@ -303,6 +308,7 @@ export default function MapScreen() {
   const calculateRoutes = async (originCoords, destCoords) => {
     try {
       setCalculatingRoutes(true);
+      setComparisonData(null);
       const res = await apiService.compareRoutes(
         originCoords.latitude,
         originCoords.longitude,
@@ -320,6 +326,7 @@ export default function MapScreen() {
         );
       }
     } catch (e) {
+      setComparisonData(null);
       Alert.alert('Route Error', 'Could not calculate routes. Please verify destination.');
     } finally {
       setCalculatingRoutes(false);
@@ -341,6 +348,7 @@ export default function MapScreen() {
     setIsSimulating(false);
     if (simIntervalRef.current) clearInterval(simIntervalRef.current);
     voiceService.stop();
+    setUserLocation(selectedOriginLocation);
   };
 
   const handleNextStep = () => {
@@ -461,11 +469,15 @@ export default function MapScreen() {
           <View style={styles.topContainer}>
             {/* Top Bar: Origin pill on left, clearly visible Auth buttons or profile on right */}
             <View style={styles.topBarRow}>
-              <View style={styles.originPill}>
-                <Text style={styles.originPillText}>
-                  {locLoading ? '📡 Locating GPS...' : `🟢 ${originName}`}
+              <TouchableOpacity
+                style={styles.originPill}
+                onPress={() => setShowOriginModal(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.originPillText} numberOfLines={1}>
+                  {locLoading ? '📡 Locating GPS...' : `🟢 From: ${originName} ▾`}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {currentUser ? (
                 <TouchableOpacity
@@ -519,7 +531,7 @@ export default function MapScreen() {
                 <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 6 }} />
               ) : null}
               {searchQuery ? (
-                <TouchableOpacity onPress={() => { setSearchQuery(''); setDestination(null); setComparisonData(null); setSearchResults([]); setSelectedPlaceInfo(null); }}>
+                <TouchableOpacity onPress={() => { setSearchQuery(''); setDestination(null); setComparisonData(null); setSearchResults([]); setSelectedPlaceInfo(null); setUserLocation(selectedOriginLocation); }}>
                   <Text style={styles.clearSearchIcon}>✕</Text>
                 </TouchableOpacity>
               ) : null}
@@ -685,6 +697,7 @@ export default function MapScreen() {
                   setComparisonData(null);
                   setDestination(null);
                   setSearchQuery('');
+                  setUserLocation(selectedOriginLocation);
                 }}
               />
             </View>
@@ -719,6 +732,44 @@ export default function MapScreen() {
         onAuthSuccess={(u) => setCurrentUser(u)}
         onLogout={() => setCurrentUser(null)}
       />
+
+      {/* Origin Selection Modal */}
+      <Modal
+        visible={showOriginModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOriginModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOriginModal(false)}
+        >
+          <View style={styles.originModalBox}>
+            <Text style={styles.originModalTitle}>Select Starting Location (Origin)</Text>
+            <Text style={styles.originModalSubtitle}>Choose starting location for route comparison:</Text>
+            {NASHIK_HUBS.map((hub, idx) => (
+              <TouchableOpacity
+                key={`origin-hub-${idx}`}
+                style={[
+                  styles.originHubOption,
+                  originName === hub.name && styles.originHubOptionSelected,
+                ]}
+                onPress={() => handleSelectOriginHub(hub)}
+              >
+                <Text style={styles.originHubOptionText}>{hub.name}</Text>
+                {originName === hub.name && <Text style={styles.originHubCheckmark}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.originModalCloseBtn}
+              onPress={() => setShowOriginModal(false)}
+            >
+              <Text style={styles.originModalCloseBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1031,5 +1082,73 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 30,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    zIndex: 999,
+  },
+  originModalBox: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  originModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  originModalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+  originHubOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 8,
+  },
+  originHubOptionSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#3B82F6',
+    borderWidth: 1.5,
+  },
+  originHubOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  originHubCheckmark: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+  },
+  originModalCloseBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  originModalCloseBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
   },
 });

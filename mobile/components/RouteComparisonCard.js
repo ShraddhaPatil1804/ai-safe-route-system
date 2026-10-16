@@ -13,7 +13,7 @@ export default function RouteComparisonCard({
 
   const modes = [
     { key: 'fastest', title: 'FASTEST', subtitle: 'Least Time', icon: '⚡', data: comparisonData.fastest },
-    { key: 'balanced', title: 'MEDIUM', subtitle: 'More Safety', icon: '⚖️', data: comparisonData.balanced },
+    { key: 'balanced', title: 'BALANCED', subtitle: 'Time & Safety', icon: '⚖️', data: comparisonData.balanced },
     { key: 'safest', title: 'SAFEST', subtitle: 'Top Safety', icon: '🛡️', data: comparisonData.safest, highlight: true },
   ];
 
@@ -84,6 +84,9 @@ export default function RouteComparisonCard({
                 <Text style={{ fontWeight: '700', textTransform: 'capitalize' }}>
                   {activeRoute.route_type}
                 </Text>
+              </Text>
+              <Text style={styles.speedModelNote}>
+                ⚡ Est. driving time based on road speeds (no live traffic)
               </Text>
             </View>
 
@@ -245,6 +248,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4B5563',
     marginTop: 2,
+  },
+  speedModelNote: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
   explanationSection: {
     borderTopWidth: 1,
