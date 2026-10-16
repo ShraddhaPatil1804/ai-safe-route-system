@@ -8,14 +8,7 @@ from scipy.spatial import cKDTree
 from typing import Dict, List, Any, Optional, Tuple
 
 from backend.app.database import SessionLocal
-from backend.app.safety.config import (
-    ROUTE_MODES,
-    ROAD_LIGHTING_DEFAULTS,
-    CRIME_DATA_STATUS_UNKNOWN,
-    MISSING_CRIME_DATA_DISCLAIMER,
-    calculate_segment_safety,
-    get_safety_level
-)
+from backend.app.safety.config import ROUTE_MODES, get_safety_level
 
 def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371000.0
@@ -63,26 +56,27 @@ def get_maneuver(prev_bearing: float, next_bearing: float, street_name: str) -> 
     else:
         return "uturn", f"Make a U-turn {st}".strip()
 
-# Realistic urban driving/travel speeds in Nashik (m/s)
+# Road speed values in meters per second (m/s) based on standard OpenStreetMap road hierarchy.
+# Used for deterministic travel-time calculation: travel_time_sec = length_meters / speed_m_s.
+# In the absence of live traffic sensor data, travel times are derived strictly from these
+# documented speed values and actual road segment geometries.
 SPEED_M_S = {
-    "motorway": 16.6,      # ~60 km/h
-    "trunk": 15.0,         # ~54 km/h
-    "primary": 12.5,       # ~45 km/h
-    "primary_link": 10.0,  # ~36 km/h
-    "secondary": 10.0,     # ~36 km/h
-    "secondary_link": 8.5, # ~30 km/h
-    "tertiary": 8.3,       # ~30 km/h
-    "tertiary_link": 7.0,  # ~25 km/h
-    "residential": 6.5,    # ~23 km/h
-    "living_street": 5.0,  # ~18 km/h
-    "service": 4.5,        # ~16 km/h
-    "unclassified": 6.0,   # ~21 km/h
-    "footway": 1.4,        # ~5 km/h
-    "pedestrian": 1.4,
-    "path": 1.4,
-    "steps": 0.8,
-    "track": 4.0,
-    "unknown": 6.0
+    "motorway": 16.6,        # ~60 km/h (divided high-speed expressway/bypass)
+    "trunk": 15.0,           # ~54 km/h (major arterial road)
+    "primary": 12.5,         # ~45 km/h (city primary arterial road)
+    "primary_link": 10.0,    # ~36 km/h (arterial slip road/connector)
+    "secondary": 10.0,       # ~36 km/h (city secondary connector road)
+    "secondary_link": 8.5,   # ~30 km/h (secondary slip road)
+    "tertiary": 8.3,         # ~30 km/h (standard urban collector street)
+    "tertiary_link": 7.0,    # ~25 km/h (collector slip road)
+    "residential": 6.9,      # ~25 km/h (local residential neighborhood street)
+    "living_street": 5.5,    # ~20 km/h (pedestrian-priority shared street)
+    "service": 4.5,          # ~16 km/h (access lane, alley, or driveway)
+    "unclassified": 6.0,     # ~22 km/h (minor unclassified road)
+    "footway": 1.4,          # ~5 km/h (pedestrian walkway/footpath)
+    "pedestrian": 1.4,       # ~5 km/h (pedestrian zone)
+    "path": 1.4,             # ~5 km/h (general non-motorized path)
+    "unknown": 6.0           # ~22 km/h (standard default fallback)
 }
 
 class NashikRoadNetwork:
@@ -94,7 +88,6 @@ class NashikRoadNetwork:
         self.node_coords = []
         self.kdtree = None
         self.is_loaded = False
-        self.road_id_to_edge = {}
 
     @classmethod
     def get_instance(cls):
@@ -107,18 +100,20 @@ class NashikRoadNetwork:
             return
 
         t0 = time.time()
-        print("Loading road network and intersections into NetworkX graph...")
+        print("Loading road network and intersections from database into NetworkX graph...")
         try:
             db = SessionLocal()
             try:
                 nodes_res = db.execute(
                     __import__("sqlalchemy").text("SELECT osmid, latitude, longitude FROM intersections;")
                 ).fetchall()
-
+                
                 if nodes_res:
+                    node_map = {}
                     for osmid, lat, lon in nodes_res:
                         self.node_ids.append(osmid)
                         self.node_coords.append((lat, lon))
+                        node_map[osmid] = (lat, lon)
                         self.graph.add_node(osmid, lat=lat, lon=lon)
 
                     lat_scale = 111000.0
@@ -145,36 +140,29 @@ class NashikRoadNetwork:
 
                         clean_type = str(r_type or "unknown").strip("['\"] ").split(",")[0].lower()
                         speed = SPEED_M_S.get(clean_type, 6.0)
-                        l_meters = float(length)
-                        travel_sec = l_meters / max(1.0, speed)
+                        travel_sec = length / max(1.0, speed)
+
                         geom = json.loads(geom_json) if geom_json else None
 
-                        edge_data = {
-                            "road_id": r_id,
-                            "name": r_name or "",
-                            "road_type": clean_type,
-                            "length": l_meters,
-                            "travel_time_sec": travel_sec,
-                            "speed": speed,
-                            "safety_day": float(safety or 60.0),
-                            "safety_night": max(10.0, float(safety or 60.0) - float(l_risk or 15.0) * 0.4),
-                            "safety_level": s_level or "Moderate",
-                            "police_distance": float(pol_d or 5000.0),
-                            "hospital_distance": float(hosp_d or 5000.0),
-                            "pharmacy_distance": float(pharm_d or 5000.0),
-                            "pharmacy_24h_distance": float(pharm_d or 5000.0),
-                            "lighting_risk": float(l_risk or 15.0),
-                            "isolation_risk": float(iso_risk or 10.0),
-                            "lighting_score": ROAD_LIGHTING_DEFAULTS.get(clean_type, 0.45),
-                            "bar_count": int(bar_cnt or 0),
-                            "liquor_shop_count": int(liq_cnt or 0),
-                            "commercial_density": float(comm_dens or 0.0),
-                            "commercial_count": int(comm_dens * 100) if comm_dens else 0,
-                            "educational_count": 0,
-                            "geometry": geom
-                        }
-                        self.graph.add_edge(u, v, **edge_data)
-                        self.road_id_to_edge[r_id] = (u, v, edge_data)
+                        self.graph.add_edge(
+                            u, v,
+                            road_id=r_id,
+                            name=r_name or "",
+                            road_type=clean_type,
+                            length=float(length),
+                            travel_time_sec=float(travel_sec),
+                            safety_score=float(safety or 50.0),
+                            safety_level=s_level or "Moderate",
+                            police_distance=float(pol_d or 5000.0),
+                            hospital_distance=float(hosp_d or 5000.0),
+                            pharmacy_distance=float(pharm_d or 5000.0),
+                            lighting_risk=float(l_risk or 15.0),
+                            isolation_risk=float(iso_risk or 10.0),
+                            bar_count=int(bar_cnt or 0),
+                            liquor_shop_count=int(liq_cnt or 0),
+                            commercial_density=float(comm_dens or 0.0),
+                            geometry=geom
+                        )
 
                     self.is_loaded = True
                     print(f"Network loaded from DB: {self.graph.number_of_nodes()} nodes, "
@@ -183,16 +171,16 @@ class NashikRoadNetwork:
             finally:
                 db.close()
         except Exception as e:
-            print(f"Database road tables notice ({e}). Falling back to vectorized CSV dataset with live POI scoring...")
+            print(f"Database unavailable or empty ({e}). Falling back to CSV dataset...")
 
         self._load_from_csv(t0)
 
     def _load_from_csv(self, t0: float):
         import pandas as pd
+        # Resolve path relative to repo root
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
         nodes_path = os.path.join(repo_root, "data", "raw", "nodes.csv")
         edges_path = os.path.join(repo_root, "data", "raw", "edges.csv")
-        pois_path = os.path.join(repo_root, "data", "dev_test", "nashik_pois.json")
 
         if not (os.path.exists(nodes_path) and os.path.exists(edges_path)):
             print(f"Warning: Raw CSV datasets not found at {nodes_path} or {edges_path}.")
@@ -202,8 +190,6 @@ class NashikRoadNetwork:
         nodes_df = pd.read_csv(nodes_path, usecols=["osmid", "y", "x"])
         self.node_ids = nodes_df["osmid"].tolist()
         self.node_coords = list(zip(nodes_df["y"], nodes_df["x"]))
-        node_dict = dict(zip(self.node_ids, self.node_coords))
-
         lat_scale = 111000.0
         lon_scale = 104300.0
         coords_arr = np.array(self.node_coords)
@@ -214,57 +200,15 @@ class NashikRoadNetwork:
             self.graph.add_node(osmid, lat=lat, lon=lon)
 
         edges_df = pd.read_csv(edges_path, usecols=["u", "v", "length", "highway", "name"], low_memory=False)
+        DEFAULT_SCORES = {
+            "motorway": 85.0, "trunk": 85.0, "primary": 80.0, "primary_link": 78.0,
+            "secondary": 75.0, "secondary_link": 72.0, "tertiary": 70.0, "tertiary_link": 68.0,
+            "residential": 62.0, "living_street": 60.0, "unclassified": 58.0,
+            "service": 50.0, "footway": 52.0, "pedestrian": 55.0, "path": 45.0, "unknown": 55.0
+        }
 
-        # Load POIs for live spatial scoring
-        pois = []
-        if os.path.exists(pois_path):
-            with open(pois_path, "r", encoding="utf-8") as pf:
-                pois = json.load(pf)
-
-        # Build KD-trees for POI proximity
-        pol_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") == "police"])
-        pol_tree = cKDTree(pol_coords) if len(pol_coords) > 0 else None
-
-        hosp_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") == "hospital"])
-        hosp_tree = cKDTree(hosp_coords) if len(hosp_coords) > 0 else None
-
-        pharm_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") == "pharmacy"])
-        pharm_tree = cKDTree(pharm_coords) if len(pharm_coords) > 0 else None
-
-        pharm_24h_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") == "pharmacy" and (p.get("is_24_7") or "24" in p.get("name", ""))])
-        pharm_24h_tree = cKDTree(pharm_24h_coords) if len(pharm_24h_coords) > 0 else pharm_tree
-
-        comm_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") in ["restaurant", "cafe", "shop", "supermarket", "bank", "bus_stop"]])
-        comm_tree = cKDTree(comm_coords) if len(comm_coords) > 0 else None
-
-        edu_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") in ["college", "school"]])
-        edu_tree = cKDTree(edu_coords) if len(edu_coords) > 0 else None
-
-        bar_coords = np.array([[p["latitude"] * lat_scale, p["longitude"] * lon_scale] for p in pois if p.get("category") in ["bar", "liquor_shop"]])
-        bar_tree = cKDTree(bar_coords) if len(bar_coords) > 0 else None
-
-        # Vectorized midpoint calculation
         u_arr = edges_df["u"].values
         v_arr = edges_df["v"].values
-        u_lats = np.array([node_dict[u][0] for u in u_arr])
-        u_lons = np.array([node_dict[u][1] for u in u_arr])
-        v_lats = np.array([node_dict[v][0] for v in v_arr])
-        v_lons = np.array([node_dict[v][1] for v in v_arr])
-
-        mid_lats = (u_lats + v_lats) / 2.0
-        mid_lons = (u_lons + v_lons) / 2.0
-        scaled_mids = np.column_stack([mid_lats * lat_scale, mid_lons * lon_scale])
-
-        # Query POI distances and counts
-        pol_dists, _ = pol_tree.query(scaled_mids) if pol_tree else (np.full(len(u_arr), 5000.0), None)
-        hosp_dists, _ = hosp_tree.query(scaled_mids) if hosp_tree else (np.full(len(u_arr), 5000.0), None)
-        pharm_dists, _ = pharm_tree.query(scaled_mids) if pharm_tree else (np.full(len(u_arr), 5000.0), None)
-        pharm_24h_dists, _ = pharm_24h_tree.query(scaled_mids) if pharm_24h_tree else (pharm_dists, None)
-
-        comm_counts = np.array(comm_tree.query_ball_point(scaled_mids, r=250.0, return_length=True)) if comm_tree else np.zeros(len(u_arr))
-        edu_counts = np.array(edu_tree.query_ball_point(scaled_mids, r=300.0, return_length=True)) if edu_tree else np.zeros(len(u_arr))
-        bar_counts = np.array(bar_tree.query_ball_point(scaled_mids, r=150.0, return_length=True)) if bar_tree else np.zeros(len(u_arr))
-
         length_arr = edges_df["length"].values
         highway_arr = edges_df["highway"].values
         name_arr = edges_df["name"].values
@@ -273,78 +217,35 @@ class NashikRoadNetwork:
         for i in range(len(u_arr)):
             clean_type = str(highway_arr[i] or "unknown").strip("['\"] ").split(",")[0].lower()
             speed = SPEED_M_S.get(clean_type, 6.0)
-            l_val = float(length_arr[i])
-            travel_sec = l_val / max(1.0, speed)
+            l = float(length_arr[i])
+            travel_sec = l / max(1.0, speed)
+            safety = DEFAULT_SCORES.get(clean_type, 60.0)
+            s_level = "Safe" if safety >= 65 else "Moderate"
             nm = str(name_arr[i]) if pd.notna(name_arr[i]) else ""
-
-            # Base lighting boosted by commercial shop illumination
-            base_l = ROAD_LIGHTING_DEFAULTS.get(clean_type, 0.45)
-            lighting_score = min(1.0, base_l + (0.1 if comm_counts[i] >= 2 else 0.0))
-
-            # Day Safety
-            day_metrics = calculate_segment_safety(
-                road_type=clean_type,
-                lighting_score=lighting_score,
-                d_police=float(pol_dists[i]),
-                d_hospital=float(hosp_dists[i]),
-                d_pharmacy=float(pharm_dists[i]),
-                d_pharmacy_24h=float(pharm_24h_dists[i]),
-                commercial_count=int(comm_counts[i]),
-                educational_count=int(edu_counts[i]),
-                bar_count=int(bar_counts[i]),
-                liquor_count=0,
-                is_night=False
-            )
-
-            # Night Safety
-            night_metrics = calculate_segment_safety(
-                road_type=clean_type,
-                lighting_score=lighting_score,
-                d_police=float(pol_dists[i]),
-                d_hospital=float(hosp_dists[i]),
-                d_pharmacy=float(pharm_dists[i]),
-                d_pharmacy_24h=float(pharm_24h_dists[i]),
-                commercial_count=int(comm_counts[i]),
-                educational_count=int(edu_counts[i]),
-                bar_count=int(bar_counts[i]),
-                liquor_count=0,
-                is_night=True
-            )
-
-            edge_data = {
-                "road_id": i + 1,
-                "name": nm,
-                "road_type": clean_type,
-                "length": l_val,
-                "travel_time_sec": travel_sec,
-                "speed": speed,
-                "safety_day": day_metrics["final_safety_score"],
-                "safety_night": night_metrics["final_safety_score"],
-                "safety_level": day_metrics["safety_level"],
-                "police_distance": float(pol_dists[i]),
-                "hospital_distance": float(hosp_dists[i]),
-                "pharmacy_distance": float(pharm_dists[i]),
-                "pharmacy_24h_distance": float(pharm_24h_dists[i]),
-                "lighting_score": lighting_score,
-                "lighting_risk_day": day_metrics["lighting_risk"],
-                "lighting_risk_night": night_metrics["lighting_risk"],
-                "isolation_risk_day": day_metrics["isolation_risk"],
-                "isolation_risk_night": night_metrics["isolation_risk"],
-                "commercial_count": int(comm_counts[i]),
-                "educational_count": int(edu_counts[i]),
-                "bar_count": int(bar_counts[i]),
-                "liquor_shop_count": 0,
-                "geometry": {
-                    "type": "LineString",
-                    "coordinates": [[u_lons[i], u_lats[i]], [v_lons[i], v_lats[i]]]
+            edge_batch.append((
+                u_arr[i], v_arr[i], {
+                    "road_id": i + 1,
+                    "name": nm,
+                    "road_type": clean_type,
+                    "length": l,
+                    "travel_time_sec": travel_sec,
+                    "safety_score": safety,
+                    "safety_level": s_level,
+                    "police_distance": 1500.0,
+                    "hospital_distance": 1200.0,
+                    "pharmacy_distance": 800.0,
+                    "lighting_risk": 15.0,
+                    "isolation_risk": 10.0,
+                    "bar_count": 0,
+                    "liquor_shop_count": 0,
+                    "commercial_density": 0.0,
+                    "geometry": None
                 }
-            }
-            edge_batch.append((u_arr[i], v_arr[i], edge_data))
-            self.road_id_to_edge[i + 1] = (u_arr[i], v_arr[i], edge_data)
+            ))
 
         self.graph.add_edges_from(edge_batch)
         self.is_loaded = True
-        print(f"Network loaded from CSV with live POI scoring: {self.graph.number_of_nodes()} nodes, "
+        print(f"Network loaded from CSV: {self.graph.number_of_nodes()} nodes, "
               f"{self.graph.number_of_edges()} edges in {time.time() - t0:.2f}s")
 
     def find_nearest_node(self, lat: float, lon: float) -> int:
@@ -356,52 +257,201 @@ class NashikRoadNetwork:
         _, idx = self.kdtree.query(query_pt)
         return self.node_ids[idx]
 
-    def _get_cost(self, u: int, v: int, edge_data: dict, mode: str, is_night: bool = False) -> float:
+    def _get_cost(self, u: int, v: int, edge_data: dict, mode: str) -> float:
         travel_time = edge_data["travel_time_sec"]
-        length = edge_data["length"]
-        safety = edge_data.get("safety_night" if is_night else "safety_day", edge_data.get("safety_score", 60.0))
+        safety = edge_data["safety_score"]
 
-        if mode == "shortest":
-            # Strictly shortest physical distance
-            return length
-        elif mode == "fastest":
-            # Strictly time-based: minimizes travel duration along high-speed corridors
+        if mode == "fastest":
+            # Strictly time-based: minimizes travel duration
             return travel_time
         elif mode == "balanced":
-            # Medium route: balances travel time with avoiding dark/isolated/risky corridors
-            risk = max(0.0, 100.0 - safety) / 45.0
-            return travel_time * (1.0 + 1.8 * (risk ** 1.4))
+            # Balanced: trades off travel time and safety risk without extreme circuitous detours
+            risk = max(0.0, (100.0 - safety) / 50.0)
+            return travel_time * (1.0 + 0.5 * risk)
         else:  # safest
-            # Maximizes safety: heavily penalizes low lighting, isolation, and unmonitored roads
-            risk = max(0.0, 100.0 - safety) / 45.0
-            return length * (1.0 + 3.5 * (risk ** 2.2))
+            # Maximum safety: prioritizes high-safety corridors, lighting, and emergency access
+            risk = max(0.0, (100.0 - safety) / 25.0)
+            return travel_time * (1.0 + 5.0 * (risk ** 2.0))
 
-    def _find_path(self, start_node: int, end_node: int, weight_func, dest_coord: tuple, mode: str) -> Optional[List[int]]:
+    def _generate_candidate_paths(self, start_node: int, end_node: int) -> List[List[int]]:
+        """
+        Generate a bounded set of valid, loop-free candidate paths connecting start_node
+        and end_node on the real road network. Respects graph directionality.
+        """
+        dest_data = self.graph.nodes[end_node]
+        dest_coord = (dest_data["lat"], dest_data["lon"])
+
+        # Max vehicle speed on primary/motorway is 16.6 m/s
+        # Admissible travel time lower bound heuristic
         def astar_heuristic(u, v_target):
             u_data = self.graph.nodes[u]
             h_dist = haversine_meters(u_data["lat"], u_data["lon"], dest_coord[0], dest_coord[1])
-            if mode == "fastest" or mode == "balanced":
-                return h_dist / 16.6
-            return h_dist
+            return h_dist / 16.6
 
+        raw_candidates = []
+
+        # Candidate 1: Shortest estimated travel time
         try:
-            return nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=weight_func)
+            p_fast = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: d.get("travel_time_sec", d.get("length", 50.0) / 6.0)
+            )
+            raw_candidates.append(p_fast)
         except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 2: Safest objective
+        try:
+            p_safe = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: self._get_cost(u, v, d, "safest")
+            )
+            raw_candidates.append(p_safe)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 3: Balanced objective
+        try:
+            p_bal = nx.astar_path(
+                self.graph, start_node, end_node,
+                heuristic=astar_heuristic,
+                weight=lambda u, v, d: self._get_cost(u, v, d, "balanced")
+            )
+            raw_candidates.append(p_bal)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            pass
+
+        # Candidate 4: Alternative corridor diverting from primary fastest corridor
+        if raw_candidates:
+            p_fast = raw_candidates[0]
+            # Exclude terminal access edges (first 2, last 2) so alternatives don't fail at cul-de-sacs/endpoints
+            p_fast_mid = set(zip(p_fast[2:-2], p_fast[3:-1])) if len(p_fast) > 4 else set(zip(p_fast[:-1], p_fast[1:]))
+            def pen_fast(u, v, d):
+                base = d.get("travel_time_sec", d.get("length", 50.0) / 6.0)
+                return base * 3.0 if (u, v) in p_fast_mid else base
             try:
-                return nx.bidirectional_shortest_path(self.graph, start_node, end_node)
+                p_alt1 = nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=pen_fast)
+                raw_candidates.append(p_alt1)
+            except Exception:
+                pass
+
+        # Candidate 5: Alternative corridor diverting from primary safest corridor
+        if len(raw_candidates) >= 2:
+            p_safe = raw_candidates[1]
+            p_safe_mid = set(zip(p_safe[2:-2], p_safe[3:-1])) if len(p_safe) > 4 else set(zip(p_safe[:-1], p_safe[1:]))
+            def pen_safe(u, v, d):
+                base = self._get_cost(u, v, d, "safest")
+                return base * 3.0 if (u, v) in p_safe_mid else base
+            try:
+                p_alt2 = nx.astar_path(self.graph, start_node, end_node, heuristic=astar_heuristic, weight=pen_safe)
+                raw_candidates.append(p_alt2)
+            except Exception:
+                pass
+
+        # Fallback if no directed path found via A*
+        if not raw_candidates:
+            try:
+                p_bidi = nx.bidirectional_shortest_path(self.graph, start_node, end_node)
+                raw_candidates.append(p_bidi)
             except Exception:
                 try:
                     undir = self.graph.to_undirected(as_view=True)
-                    return nx.shortest_path(undir, start_node, end_node, weight=weight_func)
+                    p_undir = nx.shortest_path(undir, start_node, end_node)
+                    raw_candidates.append(p_undir)
                 except Exception:
-                    return None
+                    return []
+
+        # Deduplicate candidates and filter out trivial deviations (>98% edge overlap)
+        unique_candidates = []
+        unique_edge_sets = []
+        for p in raw_candidates:
+            p_edges = set(zip(p[:-1], p[1:]))
+            is_dup = False
+            for u_edges in unique_edge_sets:
+                if not p_edges or not u_edges:
+                    continue
+                overlap = len(p_edges.intersection(u_edges)) / min(len(p_edges), len(u_edges))
+                if overlap > 0.98:  # 98% edge overlap is a trivial 1-node variation
+                    is_dup = True
+                    break
+            if not is_dup:
+                unique_candidates.append(p)
+                unique_edge_sets.append(p_edges)
+
+        return unique_candidates
+
+    def _evaluate_candidate(self, path: List[int]) -> Dict[str, Any]:
+        """
+        Evaluate candidate route metrics directly and independently from constituent edges.
+        """
+        total_length = 0.0
+        total_travel_time_sec = 0.0
+        weighted_safety = 0.0
+        cost_fastest = 0.0
+        cost_balanced = 0.0
+        cost_safest = 0.0
+
+        for i in range(len(path) - 1):
+            u = path[i]
+            v = path[i + 1]
+            edge = self.graph.get_edge_data(u, v)
+            if not edge:
+                edge = self.graph.get_edge_data(v, u) or {}
+
+            length = edge.get("length", 50.0)
+            travel_time = edge.get("travel_time_sec", length / 6.0)
+            safety = edge.get("safety_score", 50.0)
+
+            total_length += length
+            total_travel_time_sec += travel_time
+            weighted_safety += (length * safety)
+
+            cost_fastest += travel_time
+            cost_balanced += self._get_cost(u, v, edge, "balanced")
+            cost_safest += self._get_cost(u, v, edge, "safest")
+
+        avg_safety = round(weighted_safety / total_length, 1) if total_length > 0 else 50.0
+        distance_km = round(total_length / 1000.0, 2)
+        est_minutes = max(1, int(round(total_travel_time_sec / 60.0))) if total_travel_time_sec > 0 else 1
+
+        return {
+            "path": path,
+            "distance_km": distance_km,
+            "estimated_time_minutes": est_minutes,
+            "travel_time_sec": total_travel_time_sec,
+            "safety_score": avg_safety,
+            "cost_fastest": cost_fastest,
+            "cost_balanced": cost_balanced,
+            "cost_safest": cost_safest,
+        }
+
+    def _select_candidates_for_modes(self, candidates: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Select optimal candidate for each of the three modes:
+        - Fastest: strictly minimizes travel_time_sec (tie-break on safety_score).
+        - Safest: minimizes cost_safest (prioritizes high safety while considering travel time).
+        - Balanced: minimizes cost_balanced (reasonable trade-off between travel time and safety).
+        """
+        if not candidates:
+            return {}
+
+        best_fastest = min(candidates, key=lambda c: (c["travel_time_sec"], -c["safety_score"]))
+        best_safest = min(candidates, key=lambda c: (c["cost_safest"], c["travel_time_sec"]))
+        best_balanced = min(candidates, key=lambda c: (c["cost_balanced"], c["travel_time_sec"]))
+
+        return {
+            "fastest": best_fastest,
+            "safest": best_safest,
+            "balanced": best_balanced,
+        }
 
     def calculate_route(
         self,
         origin_lat: float, origin_lon: float,
         dest_lat: float, dest_lon: float,
-        mode: str = "safest",
-        time_of_day: str = "day"
+        mode: str = "safest"
     ) -> Dict[str, Any]:
         if not self.is_loaded:
             self.load_network()
@@ -410,30 +460,26 @@ class NashikRoadNetwork:
         if mode_clean not in ["fastest", "balanced", "safest"]:
             mode_clean = "safest"
 
-        # Time-of-day resolution
-        is_night = False
-        t_clean = time_of_day.lower().strip()
-        if t_clean == "night":
-            is_night = True
-        elif t_clean == "auto":
-            cur_hour = time.localtime().tm_hour
-            is_night = (cur_hour < 6 or cur_hour >= 19)
-
         start_node = self.find_nearest_node(origin_lat, origin_lon)
         end_node = self.find_nearest_node(dest_lat, dest_lon)
 
         if start_node == end_node:
-            return self._create_empty_route(mode_clean, origin_lat, origin_lon, is_night)
+            return self._create_empty_route(mode_clean, origin_lat, origin_lon)
 
-        weight_func = lambda u, v, d: self._get_cost(u, v, d, mode_clean, is_night=is_night)
-        dest_data = self.graph.nodes[end_node]
-        dest_coord = (dest_data["lat"], dest_data["lon"])
+        candidates = self._generate_candidate_paths(start_node, end_node)
+        if not candidates:
+            return self._create_empty_route(mode_clean, origin_lat, origin_lon, dest_lat, dest_lon)
 
-        path = self._find_path(start_node, end_node, weight_func, dest_coord, mode_clean)
-        if not path:
-            return self._create_empty_route(mode_clean, origin_lat, origin_lon, is_night, dest_lat, dest_lon)
+        evaluated = [self._evaluate_candidate(p) for p in candidates]
+        selected_map = self._select_candidates_for_modes(evaluated)
+        selected = selected_map.get(mode_clean, evaluated[0])
 
-        return self._build_route_output(path, mode_clean, origin_lat, origin_lon, dest_lat, dest_lon, is_night)
+        has_alternatives = len(candidates) > 1
+        return self._build_route_output(
+            selected["path"], mode_clean, origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
+
 
     def _build_route_output(
         self,
@@ -441,7 +487,7 @@ class NashikRoadNetwork:
         mode: str,
         origin_lat: float, origin_lon: float,
         dest_lat: float, dest_lon: float,
-        is_night: bool = False
+        has_alternatives: bool = True
     ) -> Dict[str, Any]:
         total_length = 0.0
         total_travel_time_sec = 0.0
@@ -452,14 +498,11 @@ class NashikRoadNetwork:
 
         total_police_dists = []
         total_hospital_dists = []
-        total_pharm_dists = []
-        total_pharm_24h_dists = []
-        total_lighting_scores = []
+        total_lighting_risks = []
         total_isolation_risks = []
-        total_commercial_count = 0
-        total_educational_count = 0
         total_bars = 0
         total_liquor = 0
+        commercial_densities = []
 
         edge_list = []
 
@@ -472,8 +515,8 @@ class NashikRoadNetwork:
 
             length = edge.get("length", 50.0)
             travel_time = edge.get("travel_time_sec", length / 6.0)
-            safety = edge.get("safety_night" if is_night else "safety_day", edge.get("safety_score", 60.0))
-            s_level = get_safety_level(safety)
+            safety = edge.get("safety_score", 50.0)
+            s_level = edge.get("safety_level", "Moderate")
             r_name = edge.get("name", "")
             r_type = edge.get("road_type", "residential")
             r_id = edge.get("road_id", 0)
@@ -484,14 +527,11 @@ class NashikRoadNetwork:
 
             total_police_dists.append(edge.get("police_distance", 5000.0))
             total_hospital_dists.append(edge.get("hospital_distance", 5000.0))
-            total_pharm_dists.append(edge.get("pharmacy_distance", 5000.0))
-            total_pharm_24h_dists.append(edge.get("pharmacy_24h_distance", 5000.0))
-            total_lighting_scores.append(edge.get("lighting_score", 0.5))
-            total_isolation_risks.append(edge.get("isolation_risk_night" if is_night else "isolation_risk_day", 10.0))
-            total_commercial_count += edge.get("commercial_count", 0)
-            total_educational_count += edge.get("educational_count", 0)
+            total_lighting_risks.append(edge.get("lighting_risk", 15.0))
+            total_isolation_risks.append(edge.get("isolation_risk", 10.0))
             total_bars += edge.get("bar_count", 0)
             total_liquor += edge.get("liquor_shop_count", 0)
+            commercial_densities.append(edge.get("commercial_density", 0.0))
 
             geom = edge.get("geometry")
             if geom and "coordinates" in geom:
@@ -533,9 +573,8 @@ class NashikRoadNetwork:
         # Generate Turn-by-Turn Navigation Steps
         # ==========================================
         steps = []
-        turn_penalties_sec = 0.0
-
         if edge_list:
+            # Group consecutive edges on the same road name
             grouped_steps = []
             cur_group = None
 
@@ -589,9 +628,6 @@ class NashikRoadNetwork:
                     instruction = f"Head {compass} on {g['name']}"
                 else:
                     modifier, instruction = get_maneuver(prev_bearing or cur_bearing, cur_bearing, g["name"])
-                    # Realistic turn delay at urban intersections (6 seconds)
-                    if modifier in ["left", "right", "sharp_left", "sharp_right", "uturn"]:
-                        turn_penalties_sec += 6.0
 
                 prev_bearing = cur_bearing
 
@@ -624,71 +660,43 @@ class NashikRoadNetwork:
             })
 
         avg_safety = weighted_safety_sum / max(1.0, total_length)
-        final_score = round(max(5.0, min(100.0, avg_safety)), 1)
+        final_score = round(max(0.0, min(100.0, avg_safety)), 1)
         final_level = get_safety_level(final_score)
 
-        avg_lighting = float(np.mean(total_lighting_scores)) if total_lighting_scores else 0.5
-        avg_isolation_risk = float(np.mean(total_isolation_risks)) if total_isolation_risks else 10.0
-        min_police_dist = float(min(total_police_dists)) if total_police_dists else 5000.0
-        min_hospital_dist = float(min(total_hospital_dists)) if total_hospital_dists else 5000.0
-        min_pharm_dist = float(min(total_pharm_dists)) if total_pharm_dists else 5000.0
-        min_pharm_24h_dist = float(min(total_pharm_24h_dists)) if total_pharm_24h_dists else 5000.0
-
         explanations = []
-        if mode == "shortest":
-            explanations.append("Shortest physical distance path minimizing total kilometers")
-        elif mode == "fastest":
-            explanations.append("Least travel time along higher-speed thoroughfares")
-        elif mode == "balanced":
-            explanations.append("Medium route: balances speed with enhanced safety away from isolated streets")
-        elif mode == "safest":
-            explanations.append("Maximized safety: prioritized street lighting, active venues, and emergency hubs")
+        avg_lighting_risk = np.mean(total_lighting_risks) if total_lighting_risks else 15.0
+        avg_isolation_risk = np.mean(total_isolation_risks) if total_isolation_risks else 10.0
+        min_police_dist = min(total_police_dists) if total_police_dists else 5000.0
+        min_hospital_dist = min(total_hospital_dists) if total_hospital_dists else 5000.0
+        avg_comm_dens = np.mean(commercial_densities) if commercial_densities else 0.0
 
-        # Time-aware context explanation
-        if is_night:
-            explanations.append("Nighttime safety rules active: lighting & isolation weights amplified; closed schools have 0 benefit")
-        else:
-            explanations.append("Daytime natural surveillance active: educational campuses and active retail provide footfall benefits")
-
-        if avg_lighting >= 0.70:
-            explanations.append("High street lighting along main illuminated avenues")
-        elif avg_lighting >= 0.50:
-            explanations.append("Moderate road lighting with intermittent illumination")
-
-        if total_commercial_count >= 5:
-            explanations.append(f"Passes {total_commercial_count} active retail, cafe, or transit locations")
-
+        if avg_lighting_risk <= 12.0:
+            explanations.append("Better estimated lighting along major thoroughfares")
+        if avg_comm_dens >= 0.01:
+            explanations.append("More nearby active shops, transit, and commercial venues")
         if min_police_dist <= 1200.0:
-            explanations.append(f"Within {int(min_police_dist)}m of a police station/chowki")
-
-        if is_night and min_pharm_24h_dist <= 1000.0:
-            explanations.append(f"Passes within {int(min_pharm_24h_dist)}m of a verified 24/7 pharmacy safe haven")
-        elif not is_night and min_pharm_dist <= 800.0:
-            explanations.append(f"Passes within {int(min_pharm_dist)}m of a chemist/pharmacy")
-
-        if min_hospital_dist <= 1000.0:
-            explanations.append(f"Within {int(min_hospital_dist)}m of emergency hospital care")
-
+            explanations.append(f"Passes within {int(min_police_dist)}m of a police station")
+        if min_hospital_dist <= 800.0:
+            explanations.append(f"Passes within {int(min_hospital_dist)}m of emergency medical facilities")
+        if avg_isolation_risk <= 6.0:
+            explanations.append("Lower environmental isolation and higher natural surveillance")
         if total_bars == 0 and total_liquor == 0:
             explanations.append("Zero exposure to bars or liquor outlets")
 
-        # Transparent missing crime data note
-        explanations.append("Environmental safety estimate; official police crime records are unverified/unavailable")
+        if mode == "fastest":
+            explanations.insert(0, "Shortest travel time along high-speed corridors")
+        elif mode == "balanced":
+            explanations.insert(0, "Medium route: enhanced safety with moderate travel time")
+        elif mode == "safest":
+            explanations.insert(0, "Maximized safety: prioritized lighting, active retail, and emergency hubs")
+
+        if not explanations:
+            explanations.append("Standard navigational corridor with verified road network coverage")
+        if not has_alternatives:
+            explanations.append("Single physical corridor; alternative routes unavailable in graph")
 
         distance_km = round(total_length / 1000.0, 2)
-        total_time_with_turns = total_travel_time_sec + turn_penalties_sec
-        est_minutes = max(1, int(round(total_time_with_turns / 60.0)))
-
-        risk_factors = {
-            "avg_lighting_score": round(avg_lighting, 2),
-            "avg_isolation_risk": round(avg_isolation_risk, 1),
-            "min_police_dist_m": round(min_police_dist, 1),
-            "min_hospital_dist_m": round(min_hospital_dist, 1),
-            "min_pharmacy_24h_dist_m": round(min_pharm_24h_dist, 1),
-            "commercial_venues_count": int(total_commercial_count),
-            "bars_count": int(total_bars),
-            "is_night": is_night
-        }
+        est_minutes = max(1, int(round(total_travel_time_sec / 60.0)))
 
         return {
             "route_type": mode,
@@ -696,26 +704,17 @@ class NashikRoadNetwork:
             "estimated_time_minutes": est_minutes,
             "safety_score": final_score,
             "safety_level": final_level,
-            "time_of_day": "night" if is_night else "day",
-            "crime_data_status": CRIME_DATA_STATUS_UNKNOWN,
-            "crime_data_disclaimer": MISSING_CRIME_DATA_DISCLAIMER,
-            "risk_factors": risk_factors,
             "geometry": {
                 "type": "LineString",
                 "coordinates": clean_coords
             },
             "explanation": explanations,
-            "segments": segments[:20],
-            "steps": steps
+            "segments": segments[:15],
+            "steps": steps,
+            "node_sequence": path
         }
 
-    def _create_empty_route(
-        self,
-        mode: str,
-        o_lat: float, o_lon: float,
-        is_night: bool = False,
-        d_lat: float = None, d_lon: float = None
-    ) -> Dict[str, Any]:
+    def _create_empty_route(self, mode: str, o_lat: float, o_lon: float, d_lat: float = None, d_lon: float = None) -> Dict[str, Any]:
         coords = [[o_lon, o_lat]]
         if d_lat and d_lon:
             coords.append([d_lon, d_lat])
@@ -723,20 +722,16 @@ class NashikRoadNetwork:
         else:
             dist = 0.0
 
+        # Nominal driving speed 30 km/h (8.33 m/s) matching urban tertiary street speed
+        dur_s = int(round(dist * 1000.0 / 8.33)) if dist > 0 else 0
+        est_minutes = max(1, int(round(dur_s / 60.0))) if dist > 0 else 0
+
         return {
             "route_type": mode,
             "distance_km": dist,
-            "estimated_time_minutes": max(1, int(dist * 2.5)),
-            "safety_score": 60.0,
-            "safety_level": "Moderate",
-            "time_of_day": "night" if is_night else "day",
-            "crime_data_status": CRIME_DATA_STATUS_UNKNOWN,
-            "crime_data_disclaimer": MISSING_CRIME_DATA_DISCLAIMER,
-            "risk_factors": {
-                "avg_lighting_score": 0.5,
-                "avg_isolation_risk": 10.0,
-                "is_night": is_night
-            },
+            "estimated_time_minutes": est_minutes,
+            "safety_score": 65.0,
+            "safety_level": "Safe",
             "geometry": {
                 "type": "LineString",
                 "coordinates": coords
@@ -749,11 +744,11 @@ class NashikRoadNetwork:
                     "modifier": "depart",
                     "instruction": "Proceed towards destination",
                     "distance_meters": dist * 1000.0,
-                    "distance_text": f"{dist} km",
-                    "duration_sec": int(dist * 150),
+                    "distance_text": f"{dist} km" if dist >= 1.0 else f"{int(dist * 1000)} m",
+                    "duration_sec": dur_s,
                     "street_name": "Direct Route",
-                    "safety_score": 60.0,
-                    "safety_level": "Moderate",
+                    "safety_score": 65.0,
+                    "safety_level": "Safe",
                     "coordinates": coords
                 },
                 {
@@ -764,338 +759,74 @@ class NashikRoadNetwork:
                     "distance_text": "0 m",
                     "duration_sec": 0,
                     "street_name": "Destination",
-                    "safety_score": 60.0,
-                    "safety_level": "Moderate",
+                    "safety_score": 65.0,
+                    "safety_level": "Safe",
                     "coordinates": coords[-1:]
                 }
-            ]
+            ],
+            "node_sequence": []
         }
 
     def compare_routes(
         self,
         origin_lat: float, origin_lon: float,
-        dest_lat: float, dest_lon: float,
-        time_of_day: str = "day"
+        dest_lat: float, dest_lon: float
     ) -> Dict[str, Any]:
-        """
-        Calculates and compares the three route choices: Safest, Fastest, and Balanced.
-        Fastest strictly minimizes travel time.
-        Safest strictly minimizes estimated risk (lighting, isolation, emergency proximity).
-        Balanced combines safety and travel time.
-        When routes overlap or are identical because the base objective selected the same highway,
-        it searches for next-best feasible loop-free alternative routes in the road graph.
-        Never fabricates different distances, times, or scores.
-        """
         if not self.is_loaded:
             self.load_network()
-
-        is_night = False
-        t_clean = time_of_day.lower().strip()
-        if t_clean == "night":
-            is_night = True
-        elif t_clean == "auto":
-            cur_hour = time.localtime().tm_hour
-            is_night = (cur_hour < 6 or cur_hour >= 19)
 
         start_node = self.find_nearest_node(origin_lat, origin_lon)
         end_node = self.find_nearest_node(dest_lat, dest_lon)
 
         if start_node == end_node:
-            empty_f = self._create_empty_route("fastest", origin_lat, origin_lon, is_night)
-            empty_s = self._create_empty_route("safest", origin_lat, origin_lon, is_night)
-            empty_b = self._create_empty_route("balanced", origin_lat, origin_lon, is_night)
+            f = self._create_empty_route("fastest", origin_lat, origin_lon)
+            s = self._create_empty_route("safest", origin_lat, origin_lon)
+            b = self._create_empty_route("balanced", origin_lat, origin_lon)
             return {
                 "origin": {"latitude": origin_lat, "longitude": origin_lon},
                 "destination": {"latitude": dest_lat, "longitude": dest_lon},
-                "safest": empty_s,
-                "fastest": empty_f,
-                "balanced": empty_b,
-                "time_of_day": "night" if is_night else "day"
+                "fastest": f,
+                "safest": s,
+                "balanced": b
             }
 
-        dest_data = self.graph.nodes[end_node]
-        dest_coord = (dest_data["lat"], dest_data["lon"])
+        candidates = self._generate_candidate_paths(start_node, end_node)
+        if not candidates:
+            f = self._create_empty_route("fastest", origin_lat, origin_lon, dest_lat, dest_lon)
+            s = self._create_empty_route("safest", origin_lat, origin_lon, dest_lat, dest_lon)
+            b = self._create_empty_route("balanced", origin_lat, origin_lon, dest_lat, dest_lon)
+            return {
+                "origin": {"latitude": origin_lat, "longitude": origin_lon},
+                "destination": {"latitude": dest_lat, "longitude": dest_lon},
+                "fastest": f,
+                "safest": s,
+                "balanced": b
+            }
 
-        # 1. Calculate Fastest Path (strictly minimizes travel time)
-        fastest_weight = lambda u, v, d: self._get_cost(u, v, d, "fastest", is_night=is_night)
-        fastest_path = self._find_path(start_node, end_node, fastest_weight, dest_coord, "fastest")
+        evaluated = [self._evaluate_candidate(p) for p in candidates]
+        selected_map = self._select_candidates_for_modes(evaluated)
+        has_alternatives = len(candidates) > 1
 
-        # 2. Calculate Safest Path (strictly minimizes risk)
-        safest_weight = lambda u, v, d: self._get_cost(u, v, d, "safest", is_night=is_night)
-        safest_path = self._find_path(start_node, end_node, safest_weight, dest_coord, "safest")
-
-        # 3. Calculate Balanced Path (combines time and safety)
-        balanced_weight = lambda u, v, d: self._get_cost(u, v, d, "balanced", is_night=is_night)
-        balanced_path = self._find_path(start_node, end_node, balanced_weight, dest_coord, "balanced")
-
-        def get_path_edges(p):
-            if not p or len(p) < 2:
-                return set()
-            return set(zip(p[:-1], p[1:]))
-
-        def get_interior_edges(p):
-            if not p or len(p) <= 3:
-                return set()
-            return set(zip(p[1:-2], p[2:-1]))
-
-        def path_length(p):
-            if not p:
-                return 0.0
-            total = 0.0
-            for u, v in zip(p[:-1], p[1:]):
-                ed = self.graph.get_edge_data(u, v) or self.graph.get_edge_data(v, u) or {}
-                total += ed.get("length", 50.0)
-            return total
-
-        fast_len = path_length(fastest_path)
-
-        # Check if safest is identical to fastest and whether an alternative high-safety corridor exists
-        if fastest_path and safest_path:
-            fast_edges = get_path_edges(fastest_path)
-            safe_edges = get_path_edges(safest_path)
-            overlap_fs = len(fast_edges & safe_edges) / max(1, len(safe_edges))
-
-            # Only search for alternative if they almost completely overlap
-            if overlap_fs > 0.85:
-                interior_fast = get_interior_edges(fastest_path)
-                if interior_fast:
-                    def penalized_safest_weight(u, v, d):
-                        base = safest_weight(u, v, d)
-                        if (u, v) in interior_fast or (v, u) in interior_fast:
-                            return base * 4.0
-                        return base
-
-                    alt_safest = self._find_path(start_node, end_node, penalized_safest_weight, dest_coord, "safest")
-                    if alt_safest and alt_safest != fastest_path:
-                        alt_len = path_length(alt_safest)
-                        if len(alt_safest) == len(set(alt_safest)) and alt_len <= 1.65 * fast_len:
-                            # Only adopt if the alternative route does NOT degrade safety below the fastest route
-                            alt_test = self._build_route_output(alt_safest, "safest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-                            fast_test = self._build_route_output(fastest_path, "fastest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-                            if alt_test["safety_score"] >= fast_test["safety_score"]:
-                                safest_path = alt_safest
-
-        # Select Balanced route:
-        # Balanced route should be between safest and fastest route.
-        # Its distance should be strictly between safest and fastest
-        # (minimum than fastest and maximum than safest when d_safe < d_fast).
-        if fastest_path and safest_path:
-            fast_test = self._build_route_output(fastest_path, "fastest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-            safe_test = self._build_route_output(safest_path, "safest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-            d_fast = fast_test["distance_km"]
-            d_safe = safe_test["distance_km"]
-            min_d, max_d = min(d_safe, d_fast), max(d_safe, d_fast)
-
-            # Search across convex Pareto weights between time and safety
-            if (max_d - min_d) >= 0.04:
-                target_d = (min_d + max_d) / 2.0
-                best_cand_path = None
-                best_diff = float("inf")
-
-                for lam in [0.35, 0.25, 0.40, 0.30, 0.20, 0.50, 0.60]:
-                    def w_bal(u, v, d):
-                        c_f = d.get("travel_time_sec", 5.0) * 10.0
-                        safety = d.get("safety_night" if is_night else "safety_day", 60.0)
-                        risk = max(0.0, 100.0 - safety) / 45.0
-                        c_s = d.get("length", 50.0) * (1.0 + 3.5 * (risk ** 2.2))
-                        return (1.0 - lam) * c_f + lam * c_s
-
-                    p = self._find_path(start_node, end_node, w_bal, dest_coord, "balanced")
-                    if p and p != fastest_path and p != safest_path:
-                        r_cand = self._build_route_output(p, "balanced", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-                        d_cand = r_cand["distance_km"]
-                        if min_d <= d_cand <= max_d:
-                            diff = abs(d_cand - target_d)
-                            if diff < best_diff:
-                                best_diff = diff
-                                best_cand_path = p
-
-                if best_cand_path:
-                    balanced_path = best_cand_path
-
-        # If balanced still duplicates fastest or safest, find alternative using unique divergent edges
-        if balanced_path and (balanced_path == fastest_path or balanced_path == safest_path):
-            fast_edges = get_path_edges(fastest_path)
-            safe_edges = get_path_edges(safest_path)
-            unique_diverge = (fast_edges - safe_edges) | (safe_edges - fast_edges)
-            if unique_diverge:
-                def penalized_diverge_weight(u, v, d):
-                    base = balanced_weight(u, v, d)
-                    if (u, v) in unique_diverge or (v, u) in unique_diverge:
-                        return base * 2.0
-                    return base
-                alt_b = self._find_path(start_node, end_node, penalized_diverge_weight, dest_coord, "balanced")
-                if alt_b and alt_b != fastest_path and alt_b != safest_path:
-                    if len(alt_b) == len(set(alt_b)):
-                        balanced_path = alt_b
-
-        # Fallback to empty routes if graph disconnected
-        if not fastest_path:
-            fastest_r = self._create_empty_route("fastest", origin_lat, origin_lon, is_night, dest_lat, dest_lon)
-        else:
-            fastest_r = self._build_route_output(fastest_path, "fastest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-
-        if not safest_path:
-            safest_r = self._create_empty_route("safest", origin_lat, origin_lon, is_night, dest_lat, dest_lon)
-        else:
-            safest_r = self._build_route_output(safest_path, "safest", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-
-        if not balanced_path:
-            balanced_r = self._create_empty_route("balanced", origin_lat, origin_lon, is_night, dest_lat, dest_lon)
-        else:
-            balanced_r = self._build_route_output(balanced_path, "balanced", origin_lat, origin_lon, dest_lat, dest_lon, is_night)
-
-        # Transparent identical corridor explanations if no alternative exists
-        coords_fast = fastest_r["geometry"]["coordinates"]
-        coords_safe = safest_r["geometry"]["coordinates"]
-        coords_bal = balanced_r["geometry"]["coordinates"]
-
-        if coords_safe == coords_fast:
-            safest_r["explanation"].append("Identical corridor to Fastest route: This represents the only direct viable connection between these locations in the network.")
-        if coords_bal == coords_safe:
-            balanced_r["explanation"].append("Shares corridor with Safest route as no intermediate safety trade-off detour is available.")
-        elif coords_bal == coords_fast:
-            balanced_r["explanation"].append("Shares corridor with Fastest route: Direct corridor provides optimal speed and safety balance.")
+        fastest_r = self._build_route_output(
+            selected_map["fastest"]["path"], "fastest",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
+        safest_r = self._build_route_output(
+            selected_map["safest"]["path"], "safest",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
+        balanced_r = self._build_route_output(
+            selected_map["balanced"]["path"], "balanced",
+            origin_lat, origin_lon, dest_lat, dest_lon,
+            has_alternatives=has_alternatives
+        )
 
         return {
             "origin": {"latitude": origin_lat, "longitude": origin_lon},
             "destination": {"latitude": dest_lat, "longitude": dest_lon},
-            "safest": safest_r,
             "fastest": fastest_r,
-            "balanced": balanced_r,
-            "time_of_day": fastest_r.get("time_of_day", "day")
-        }
-
-    # ==============================================================
-    # In-memory GeoJSON queries for Heatmap and Roads (Offline fallback)
-    # ==============================================================
-    def get_heatmap_features(
-        self,
-        min_lat: float, min_lon: float,
-        max_lat: float, max_lon: float,
-        level: Optional[str] = None,
-        limit: int = 500,
-        is_night: bool = False
-    ) -> List[Dict[str, Any]]:
-        if not self.is_loaded:
-            self.load_network()
-
-        color_map = {
-            "Very Safe": "#10B981",
-            "Safe": "#34D399",
-            "Moderate": "#FBBF24",
-            "Risky": "#F97316",
-            "High Risk": "#EF4444"
-        }
-
-        features = []
-        for u, v, d in self.graph.edges(data=True):
-            geom = d.get("geometry")
-            if not geom or "coordinates" not in geom:
-                continue
-
-            coords = geom["coordinates"]
-            # Check bounding box on first coordinate
-            if not coords:
-                continue
-            lon, lat = coords[0]
-            if not (min_lat <= lat <= max_lat and min_lon <= lon <= max_lon):
-                continue
-
-            score = d.get("safety_night" if is_night else "safety_day", d.get("safety_score", 60.0))
-            s_level = get_safety_level(score)
-
-            if level and s_level.lower() != level.lower():
-                continue
-
-            features.append({
-                "type": "Feature",
-                "properties": {
-                    "id": d.get("road_id", 0),
-                    "name": d.get("name", ""),
-                    "road_type": d.get("road_type", "residential"),
-                    "safety_score": score,
-                    "safety_level": s_level,
-                    "color": color_map.get(s_level, "#FBBF24")
-                },
-                "geometry": geom
-            })
-
-            if len(features) >= limit:
-                break
-
-        return features
-
-    def get_roads_in_bbox(
-        self,
-        min_lat: float, min_lon: float,
-        max_lat: float, max_lon: float,
-        limit: int = 300
-    ) -> List[Dict[str, Any]]:
-        if not self.is_loaded:
-            self.load_network()
-
-        features = []
-        for u, v, d in self.graph.edges(data=True):
-            geom = d.get("geometry")
-            if not geom or "coordinates" not in geom:
-                continue
-            coords = geom["coordinates"]
-            if not coords:
-                continue
-            lon, lat = coords[0]
-            if not (min_lat <= lat <= max_lat and min_lon <= lon <= max_lon):
-                continue
-
-            score = d.get("safety_day", d.get("safety_score", 60.0))
-            s_level = get_safety_level(score)
-
-            features.append({
-                "type": "Feature",
-                "properties": {
-                    "id": d.get("road_id", 0),
-                    "name": d.get("name", ""),
-                    "road_type": d.get("road_type", "residential"),
-                    "length": d.get("length", 0.0),
-                    "safety_score": score,
-                    "safety_level": s_level
-                },
-                "geometry": geom
-            })
-
-            if len(features) >= limit:
-                break
-
-        return features
-
-    def get_road_by_id(self, road_id: int) -> Optional[Dict[str, Any]]:
-        if not self.is_loaded:
-            self.load_network()
-
-        edge_info = self.road_id_to_edge.get(road_id)
-        if not edge_info:
-            return None
-
-        u, v, d = edge_info
-        return {
-            "road_id": road_id,
-            "name": d.get("name") or "Unnamed Road",
-            "road_type": d.get("road_type", "residential"),
-            "length_meters": round(d.get("length", 0.0), 1),
-            "final_safety_score": d.get("safety_day", 60.0),
-            "safety_level": get_safety_level(d.get("safety_day", 60.0)),
-            "factors": {
-                "lighting_score": d.get("lighting_score", 0.5),
-                "lighting_risk": d.get("lighting_risk_day", 10.0),
-                "isolation_risk": d.get("isolation_risk_day", 10.0),
-                "bar_count": d.get("bar_count", 0),
-                "crime_data_status": CRIME_DATA_STATUS_UNKNOWN
-            },
-            "emergency_distances": {
-                "police_meters": round(d.get("police_distance", 5000.0), 1),
-                "hospital_meters": round(d.get("hospital_distance", 5000.0), 1),
-                "pharmacy_meters": round(d.get("pharmacy_distance", 5000.0), 1),
-                "pharmacy_24h_meters": round(d.get("pharmacy_24h_distance", 5000.0), 1)
-            },
-            "geometry": d.get("geometry")
+            "safest": safest_r,
+            "balanced": balanced_r
         }

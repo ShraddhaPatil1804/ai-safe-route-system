@@ -3,7 +3,7 @@
   "target_name": "future_crime_count",
   "dataset_type": "DEVELOPMENT_SYNTHETIC_DATA_TEMPORAL",
   "disclaimer": "PHASE 5 DEVELOPMENT MODEL \u2014 TRAINED ON SYNTHETIC DATA USING LEAKAGE-SAFE TEMPORAL VALIDATION. NOT FOR REAL-WORLD POLICE PREDICTION OR ROUTING USE.",
-  "trained_at": "2026-10-13 16:30:48",
+  "trained_at": "2026-10-14 23:33:12",
   "temporal_cutoff_date": "2024-04-01 00:00:00",
   "historical_period": "2023-04-10 to 2024-03-31 (12 months)",
   "prediction_target_period": "2024-04-01 to 2024-09-30 (6 months)",

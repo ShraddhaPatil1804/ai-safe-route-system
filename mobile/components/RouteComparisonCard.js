@@ -12,7 +12,25 @@ export default function RouteComparisonCard({
 }) {
   if (!comparisonData) return null;
 
-  const modes = [
+    const modes = [
+    {
+      key: 'fastest',
+      title: 'FASTEST',
+      subtitle: 'Least Time',
+      icon: '⚡',
+      color: '#2563EB',
+      bgLight: '#EFF6FF',
+      data: comparisonData.fastest,
+    },
+    {
+      key: 'balanced',
+      title: 'BALANCED',
+      subtitle: 'Time & Safety',
+      icon: '⚖️',
+      color: '#F59E0B',
+      bgLight: '#FFFBEB',
+      data: comparisonData.balanced,
+    },
     {
       key: 'safest',
       title: 'SAFEST',
@@ -23,26 +41,7 @@ export default function RouteComparisonCard({
       data: comparisonData.safest,
       highlight: true,
     },
-    {
-      key: 'fastest',
-      title: 'FASTEST',
-      subtitle: 'Least Time',
-      icon: '⚡',
-      color: '#3B82F6',
-      bgLight: '#EFF6FF',
-      data: comparisonData.fastest,
-    },
-    {
-      key: 'balanced',
-      title: 'BALANCED',
-      subtitle: 'Best Mix',
-      icon: '⚖️',
-      color: '#6C4AB6',
-      bgLight: '#F5F3FF',
-      data: comparisonData.balanced,
-    },
   ];
-
   const activeRoute =
     comparisonData[selectedMode] ||
     comparisonData.safest ||
@@ -144,8 +143,17 @@ export default function RouteComparisonCard({
                   {activeRoute.estimated_time_minutes} min{' '}
                   <Text style={styles.activeDistSub}>({activeRoute.distance_km} km)</Text>
                 </Text>
+                <Text style={styles.speedModelNote}>
+                  ⚡ Est. driving time based on road speeds (no live traffic)
+                </Text>
+
                 <View style={styles.modeIndicatorPill}>
-                  <Text style={[styles.modeIndicatorText, { color: activeModeConfig.color }]}>
+                  <Text
+                    style={[
+                      styles.modeIndicatorText,
+                      { color: activeModeConfig.color },
+                    ]}
+                  >
                     {activeModeConfig.icon} {activeRoute.route_type?.toUpperCase()} ROUTE
                   </Text>
                 </View>
@@ -421,6 +429,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginTop: 1,
+  },
+  speedModelNote: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
   explanationSection: {
     borderTopWidth: 1,

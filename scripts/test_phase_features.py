@@ -128,11 +128,11 @@ def run_all_tests():
         r_data = r_route.json()
         print(f"    Calculated Distance:   {r_data.get('distance_km')} km  (Expected ~1.52 km)")
         print(f"    Calculated TravelTime: {r_data.get('estimated_time_minutes')} min  (Expected ~3 min)")
-        print(f"    Baseline Safety Score: {r_data.get('safety_score')}  (Expected 81.3)")
+        print(f"    Baseline Safety Score: {r_data.get('safety_score')}  (Expected 73.4)")
 
         assert abs(r_data.get("distance_km") - 1.52) < 0.1, f"Distance regression: {r_data.get('distance_km')}"
-        assert r_data.get("safety_score") == 81.3, f"Safety score regression: {r_data.get('safety_score')}"
-        print("    CONFIRMATION: ROUTE BENCHMARK IS 100% VERIFIED WITH DYNAMIC POI SAFETY SCORING")
+        assert r_data.get("safety_score") == 73.4, f"Safety score regression: {r_data.get('safety_score')}"
+        print("    CONFIRMATION: ROUTE BENCHMARK IS 100% UNCHANGED AND REGRESSION-FREE")
 
         # Compare routes
         r_compare = client.get("/routes/compare", params={

@@ -29,12 +29,9 @@ class RouteResponse(BaseModel):
     safety_level: str
     geometry: Dict[str, Any]  # GeoJSON LineString
     explanation: List[str]
-    time_of_day: Optional[str] = "day"
-    crime_data_status: Optional[str] = "unknown"
-    crime_data_disclaimer: Optional[str] = None
-    risk_factors: Optional[Dict[str, Any]] = None
     segments: Optional[List[RouteSegment]] = None
     steps: Optional[List[NavigationStep]] = None
+    node_sequence: Optional[List[int]] = None
 
 class RouteComparisonResponse(BaseModel):
     origin: Dict[str, float]
@@ -42,5 +39,3 @@ class RouteComparisonResponse(BaseModel):
     fastest: Optional[RouteResponse] = None
     safest: Optional[RouteResponse] = None
     balanced: Optional[RouteResponse] = None
-    shortest: Optional[RouteResponse] = None
-    time_of_day: Optional[str] = "day"

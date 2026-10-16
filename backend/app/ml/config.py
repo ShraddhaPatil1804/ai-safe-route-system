@@ -13,7 +13,7 @@ CRIME_ROAD_BUFFER_METERS = 75.0      # Spatial corridor buffer around road geome
 RECENT_CRIME_WINDOW_DAYS = 365       # 12-month temporal window for recent_crime_count
 DEFAULT_NO_CRIME_DISTANCE = 5000.0   # Safe default distance (meters) when no crime exists within corridor
 
-# Crime categories and severity weights (1.0 to 5.0)
+# Crime categories and severity weights (1.0 to 8.0)
 CRIME_CATEGORIES = {
     "Harassment / Eve Teasing": 2.5,
     "Stalking": 3.0,
@@ -22,6 +22,8 @@ CRIME_CATEGORIES = {
     "Verbal Abuse / Intimidation": 2.0,
     "Assault": 4.5,
     "Physical Molestation": 5.0,
+    "Robbery": 4.0,
+    "Other": 2.0,
 }
 
 # Feature lists used for Random Forest training and inference

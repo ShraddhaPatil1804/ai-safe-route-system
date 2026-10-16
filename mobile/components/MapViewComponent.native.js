@@ -148,7 +148,13 @@ export default function MapViewComponent({
                 latitude: lat,
                 longitude: lon,
               }))}
-              strokeColor={MODE_COLORS[selectedMode] || '#6C4AB6'}
+            strokeColor={
+              selectedMode === 'safest'
+                ? '#10B981'
+                : selectedMode === 'balanced'
+                ? '#F59E0B'
+                : '#2563EB'
+            }
               strokeWidth={7}
             />
           )}

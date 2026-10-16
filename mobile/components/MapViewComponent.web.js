@@ -267,7 +267,13 @@ export default function MapViewComponent({
         const routeColor = MODE_COLORS[mKey] || '#6C4AB6';
 
         const poly = window.L.polyline(latLngs, {
-          color: isSelected ? routeColor : '#C4B5FD',
+          color: isSelected
+            ? (mKey === 'safest'
+                ? '#10B981'
+                : mKey === 'balanced'
+                ? '#F59E0B'
+                : '#2563EB')
+            : '#C4B5FD',
           weight: isSelected ? 7.5 : 4.0,
           opacity: isSelected ? 0.95 : 0.5,
           dashArray: isSelected ? null : '6, 6',
