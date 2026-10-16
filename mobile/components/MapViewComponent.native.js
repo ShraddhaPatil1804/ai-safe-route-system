@@ -13,7 +13,18 @@ export const CATEGORY_COLORS = {
   fuel: '#D946EF',
   park: '#16A34A',
   bar: '#9333EA',
+  school: '#8B5CF6',
+  college: '#7C3AED',
+  shop: '#EC4899',
+  mall: '#BE185D',
+  supermarket: '#0891B2',
   other: '#6B7280',
+};
+
+export const MODE_COLORS = {
+  safest: '#10B981',
+  fastest: '#3B82F6',
+  balanced: '#6C4AB6',
 };
 
 export default function MapViewComponent({
@@ -111,7 +122,7 @@ export default function MapViewComponent({
       {comparisonData && (
         <>
           {/* Unselected Alternate Routes */}
-          {!isNavigating && ['fastest', 'safest', 'balanced'].map((mKey) => {
+          {!isNavigating && ['safest', 'fastest', 'balanced'].map((mKey) => {
             if (mKey === selectedMode) return null;
             const r = comparisonData[mKey];
             if (!r?.geometry?.coordinates) return null;
@@ -123,8 +134,8 @@ export default function MapViewComponent({
               <Polyline
                 key={`alt-${mKey}`}
                 coordinates={coords}
-                strokeColor="#94A3B8"
-                strokeWidth={4}
+                strokeColor="#C4B5FD"
+                strokeWidth={3.5}
                 lineDashPattern={[5, 5]}
               />
             );
@@ -137,7 +148,7 @@ export default function MapViewComponent({
                 latitude: lat,
                 longitude: lon,
               }))}
-              strokeColor={selectedMode === 'safest' ? '#10B981' : '#2563EB'}
+              strokeColor={MODE_COLORS[selectedMode] || '#6C4AB6'}
               strokeWidth={7}
             />
           )}

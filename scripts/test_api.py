@@ -60,15 +60,23 @@ def run_tests():
         assert "police" in r.json()
 
         # 7. Routes Compare
-        print("\n--> 7. Testing GET /routes/compare")
-        r = client.get("/routes/compare?origin_lat=19.953&origin_lon=73.834&dest_lat=20.005&dest_lon=73.765")
+        print("\n--> 7. Testing GET /routes/compare (Day & Night)")
+        r = client.get("/routes/compare?origin_lat=19.953&origin_lon=73.834&dest_lat=20.005&dest_lon=73.765&time_of_day=day")
         print("Status:", r.status_code)
         data = r.json()
-        print("  Fastest:", data["fastest"]["distance_km"], "km |", data["fastest"]["estimated_time_minutes"], "min | Score:", data["fastest"]["safety_score"])
-        print("  Safest: ", data["safest"]["distance_km"], "km |", data["safest"]["estimated_time_minutes"], "min | Score:", data["safest"]["safety_score"])
+        print("  Fastest :", data["fastest"]["distance_km"], "km |", data["fastest"]["estimated_time_minutes"], "min | Score:", data["fastest"]["safety_score"])
+        print("  Safest  :", data["safest"]["distance_km"], "km |", data["safest"]["estimated_time_minutes"], "min | Score:", data["safest"]["safety_score"])
         print("  Balanced:", data["balanced"]["distance_km"], "km |", data["balanced"]["estimated_time_minutes"], "min | Score:", data["balanced"]["safety_score"])
-        print("  Safest Reasons:", data["safest"]["explanation"])
+        if "shortest" in data and data["shortest"]:
+            print("  Shortest:", data["shortest"]["distance_km"], "km |", data["shortest"]["estimated_time_minutes"], "min | Score:", data["shortest"]["safety_score"])
+        print("  Safest Reasons:", data["safest"]["explanation"][:2])
         assert r.status_code == 200
+
+        # Night comparison
+        r_night = client.get("/routes/compare?origin_lat=19.953&origin_lon=73.834&dest_lat=20.005&dest_lon=73.765&time_of_day=night")
+        assert r_night.status_code == 200
+        night_data = r_night.json()
+        print("  Night Safest:", night_data["safest"]["distance_km"], "km |", night_data["safest"]["estimated_time_minutes"], "min | Score:", night_data["safest"]["safety_score"])
 
         # 8. Heatmap
         print("\n--> 8. Testing GET /heatmap")
