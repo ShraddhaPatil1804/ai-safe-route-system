@@ -45,7 +45,8 @@ def init_sqlite_tables():
     """Initializes tables in fallback SQLite database if PostgreSQL is not active."""
     if pg_engine is None:
         from backend.app.models.user import User
-        Base.metadata.create_all(bind=engine, tables=[User.__table__])
+        from backend.app.models.report import UserReport
+        Base.metadata.create_all(bind=engine, tables=[User.__table__, UserReport.__table__])
 
 try:
     init_sqlite_tables()

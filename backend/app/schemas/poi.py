@@ -9,6 +9,10 @@ class POIOut(BaseModel):
     latitude: float
     longitude: float
     distance_meters: Optional[float] = None
+    address: Optional[str] = None
+    opening_hours: Optional[str] = None
+    is_24_7: Optional[bool] = False
+    is_emergency_safe_haven: Optional[bool] = False
 
     class Config:
         from_attributes = True

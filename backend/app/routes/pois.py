@@ -49,7 +49,17 @@ CATEGORY_MAPPING = {
     "bar": "bar",
     "bars": "bar",
     "pub": "bar",
-    "lounge": "bar"
+    "lounge": "bar",
+    "school": "school",
+    "schools": "school",
+    "college": "college",
+    "colleges": "college",
+    "university": "college",
+    "shop": "shop",
+    "shops": "shop",
+    "mall": "shop",
+    "malls": "shop",
+    "supermarket": "shop"
 }
 
 def load_local_pois() -> List[Dict[str, Any]]:
@@ -167,7 +177,11 @@ def get_pois(
             "category": item_cat,
             "latitude": p_lat,
             "longitude": p_lon,
-            "distance_meters": dist_m
+            "distance_meters": dist_m,
+            "address": item.get("address"),
+            "opening_hours": item.get("opening_hours"),
+            "is_24_7": bool(item.get("is_24_7", False)),
+            "is_emergency_safe_haven": bool(item.get("is_emergency_safe_haven", False))
         })
 
     if lat is not None and lon is not None:
@@ -209,7 +223,26 @@ def get_emergency_facilities(
             "longitude": closest["longitude"],
             "distance_meters": dist_m,
             "distance_km": round(dist_m / 1000.0, 2),
-            "phone": phone
+            "phone": phone,
+            "opening_hours": closest.get("opening_hours", "24/7" if closest.get("is_24_7") else "Standard"),
+            "is_24_7": bool(closest.get("is_24_7", False))
+        }
+
+    pharmacy_24h = [p for p in all_local if p.get("category") == "pharmacy" and p.get("is_24_7")]
+    if pharmacy_24h:
+        closest_24h = min(pharmacy_24h, key=lambda p: haversine_distance_m(lat, lon, p["latitude"], p["longitude"]))
+        d_24h = round(haversine_distance_m(lat, lon, closest_24h["latitude"], closest_24h["longitude"]), 1)
+        results["pharmacy_24h"] = {
+            "id": closest_24h["id"],
+            "name": closest_24h.get("name"),
+            "category": "pharmacy",
+            "latitude": closest_24h["latitude"],
+            "longitude": closest_24h["longitude"],
+            "distance_meters": d_24h,
+            "distance_km": round(d_24h / 1000.0, 2),
+            "phone": "102",
+            "opening_hours": "24/7",
+            "is_24_7": True
         }
 
     return results

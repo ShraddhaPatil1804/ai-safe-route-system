@@ -12,10 +12,48 @@ const CATEGORY_STYLES = {
   fuel: { color: '#D946EF', emoji: '⛽' },
   park: { color: '#16A34A', emoji: '🌳' },
   bar: { color: '#9333EA', emoji: '🍺' },
+  school: { color: '#8B5CF6', emoji: '🎒' },
+  college: { color: '#7C3AED', emoji: '🏫' },
+  shop: { color: '#EC4899', emoji: '🛍️' },
+  mall: { color: '#BE185D', emoji: '🏬' },
+  supermarket: { color: '#0891B2', emoji: '🛒' },
   other: { color: '#6B7280', emoji: '📍' },
 };
 
+const MODE_COLORS = {
+  safest: '#10B981',
+  fastest: '#3B82F6',
+  balanced: '#6C4AB6',
+};
+
+// Injected essential Leaflet CSS to eliminate grey tiles, misalignments, and loading races
+const LEAFLET_CORE_CSS = `
+  .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+  .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+  .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+    position: absolute; left: 0; top: 0;
+  }
+  .leaflet-container {
+    overflow: hidden; width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #F8F7FF; outline: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .leaflet-tile {
+    filter: inherit; visibility: inherit; user-select: none; -webkit-user-select: none;
+  }
+  .leaflet-marker-icon, .leaflet-marker-shadow {
+    display: block;
+  }
+  .leaflet-control-container .leaflet-top,
+  .leaflet-control-container .leaflet-bottom {
+    position: absolute; z-index: 10; pointer-events: none;
+  }
+  .leaflet-control {
+    pointer-events: auto;
+  }
+`;
+
 export default function MapViewComponent({
+  mapRef,
   region,
   onMapPress,
   userLocation,
@@ -37,6 +75,15 @@ export default function MapViewComponent({
   const userMarkerRef = useRef(null);
 
   useEffect(() => {
+    // 1. Inject Leaflet critical CSS if not already present
+    if (typeof document !== 'undefined' && !document.getElementById('leaflet-essential-css')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'leaflet-essential-css';
+      styleEl.innerHTML = LEAFLET_CORE_CSS;
+      document.head.appendChild(styleEl);
+    }
+
+    // 2. Load Leaflet JS & full stylesheet
     if (typeof window !== 'undefined' && !window.L) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -50,29 +97,75 @@ export default function MapViewComponent({
     } else if (typeof window !== 'undefined' && window.L) {
       initLeafletMap();
     }
+
+    return () => {
+      // Clean up map instance on unmount
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
   }, []);
 
   const initLeafletMap = () => {
     if (!window.L || !containerRef.current || mapInstanceRef.current) return;
 
-    const map = window.L.map(containerRef.current).setView(
-      [region.latitude, region.longitude],
-      14
-    );
+    try {
+      const map = window.L.map(containerRef.current, {
+        zoomControl: false, // We provide modern integrated zoom controls
+        attributionControl: false,
+      }).setView(
+        [region.latitude || 19.985, region.longitude || 73.795],
+        14
+      );
 
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors | Women Safe Navigation Nashik',
-      maxZoom: 19,
-    }).addTo(map);
+      // Standard high-reliability OpenStreetMap tiles with no API key requirement or watermark
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        subdomains: 'abc',
+        maxZoom: 19,
+        crossOrigin: true,
+      }).addTo(map);
 
-    map.on('click', (e) => {
-      if (onMapPress) {
-        onMapPress({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+      map.on('click', (e) => {
+        if (onMapPress) {
+          onMapPress({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+        }
+      });
+
+      mapInstanceRef.current = map;
+
+      // Expose map controls via mapRef for parent component
+      if (mapRef) {
+        mapRef.current = {
+          animateToRegion: (coords, duration = 500) => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.flyTo(
+                [coords.latitude, coords.longitude],
+                15,
+                { duration: duration / 1000 }
+              );
+            }
+          },
+          zoomIn: () => {
+            if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
+          },
+          zoomOut: () => {
+            if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
+          },
+        };
       }
-    });
 
-    mapInstanceRef.current = map;
-    updateLayers();
+      // Ensure proper dimensions are calculated after DOM attachment
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 150);
+
+      updateLayers();
+    } catch (e) {
+      console.warn('Leaflet map initialization warning:', e);
+    }
   };
 
   const updateLayers = () => {
@@ -93,8 +186,8 @@ export default function MapViewComponent({
         className: 'user-marker',
         html: `
           <div style="position:relative;display:flex;align-items:center;justify-content:center;">
-            <div style="position:absolute;width:34px;height:34px;border-radius:50%;background:rgba(37,99,235,0.25);animation:pulse 1.8s infinite;"></div>
-            <div style="background:#2563EB;width:18px;height:18px;border-radius:50%;border:3px solid #FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#FFF;font-size:10px;font-weight:bold;">▲</div>
+            <div style="position:absolute;width:34px;height:34px;border-radius:50%;background:rgba(108,74,182,0.25);animation:pulse 1.8s infinite;"></div>
+            <div style="background:#6C4AB6;width:18px;height:18px;border-radius:50%;border:3px solid #FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#FFF;font-size:10px;font-weight:bold;">▲</div>
           </div>
         `,
         iconSize: [34, 34],
@@ -116,12 +209,12 @@ export default function MapViewComponent({
       const dIcon = window.L.divIcon({
         className: 'dest-marker',
         html: `
-          <div style="background:#DC2626;width:30px;height:30px;border-radius:15px;border:3px solid #FFFFFF;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#FFF;font-size:14px;">
+          <div style="background:#DC2626;width:32px;height:32px;border-radius:16px;border:3px solid #FFFFFF;box-shadow:0 3px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#FFF;font-size:15px;">
             🎯
           </div>
         `,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
       });
       const m = window.L.marker([destination.latitude, destination.longitude], { icon: dIcon })
         .addTo(map)
@@ -137,9 +230,9 @@ export default function MapViewComponent({
 
         const pIcon = window.L.divIcon({
           className: 'poi-marker',
-          html: `<div style="background:${isSelected ? '#F59E0B' : style.color};width:${isSelected ? '30px' : '24px'};height:${isSelected ? '30px' : '24px'};border-radius:${isSelected ? '15px' : '12px'};border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:${isSelected ? '15px' : '12px'};box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:pointer;">${style.emoji}</div>`,
-          iconSize: isSelected ? [30, 30] : [24, 24],
-          iconAnchor: isSelected ? [15, 15] : [12, 12],
+          html: `<div style="background:${isSelected ? '#6C4AB6' : style.color};width:${isSelected ? '32px' : '26px'};height:${isSelected ? '32px' : '26px'};border-radius:${isSelected ? '16px' : '13px'};border:2.5px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:${isSelected ? '15px' : '12px'};box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer;transform:${isSelected ? 'scale(1.1)' : 'scale(1)'};transition:all 0.2s;">${p.is_24_7 && p.category === 'pharmacy' ? '🏪' : style.emoji}</div>`,
+          iconSize: isSelected ? [32, 32] : [26, 26],
+          iconAnchor: isSelected ? [16, 16] : [13, 13],
         });
         const m = window.L.marker([p.latitude, p.longitude], { icon: pIcon })
           .addTo(map);
@@ -157,26 +250,33 @@ export default function MapViewComponent({
       });
     }
 
-    // 4. Routes Polylines
+    // 4. Routes Polylines (Safest, Fastest, Balanced)
     if (comparisonData) {
-      ['fastest', 'safest', 'balanced'].forEach((mKey) => {
+      // Draw unselected routes first, then active selected route on top
+      const modesOrder = ['fastest', 'balanced', 'safest'].filter(k => k !== selectedMode);
+      if (selectedMode && comparisonData[selectedMode]) {
+        modesOrder.push(selectedMode);
+      }
+
+      modesOrder.forEach((mKey) => {
         const r = comparisonData[mKey];
         if (!r?.geometry?.coordinates) return;
 
         const isSelected = mKey === selectedMode;
         const latLngs = r.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+        const routeColor = MODE_COLORS[mKey] || '#6C4AB6';
 
         const poly = window.L.polyline(latLngs, {
-          color: isSelected ? (mKey === 'safest' ? '#10B981' : '#2563EB') : '#94A3B8',
-          weight: isSelected ? 7 : 4,
-          opacity: isSelected ? 0.95 : 0.4,
+          color: isSelected ? routeColor : '#C4B5FD',
+          weight: isSelected ? 7.5 : 4.0,
+          opacity: isSelected ? 0.95 : 0.5,
           dashArray: isSelected ? null : '6, 6',
         }).addTo(map);
 
         routeLayersRef.current.push(poly);
 
         if (isSelected && !isNavigating && latLngs.length > 0) {
-          map.fitBounds(poly.getBounds(), { padding: [50, 50] });
+          map.fitBounds(poly.getBounds(), { padding: [55, 55] });
         }
       });
     }
@@ -187,7 +287,7 @@ export default function MapViewComponent({
       const stepPoly = window.L.polyline(stepLatLngs, {
         color: '#FBBF24',
         weight: 10,
-        opacity: 0.9,
+        opacity: 0.95,
       }).addTo(map);
       routeLayersRef.current.push(stepPoly);
     }
@@ -213,7 +313,19 @@ export default function MapViewComponent({
 
   return (
     <View style={styles.container}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#F8F7FF',
+        }}
+      />
     </View>
   );
 }
@@ -221,5 +333,6 @@ export default function MapViewComponent({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F8F7FF',
   },
 });
